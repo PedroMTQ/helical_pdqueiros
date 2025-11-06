@@ -2,15 +2,15 @@
 services:
 
   postgres:
-    container_name: hydrosat-postgres
+    container_name: helical-postgres
     image: postgres:16.4-bullseye
     shm_size: 1g
     ports:
       - 5432:5432
     environment:
-      - POSTGRES_USER=hydrosat_user
-      - POSTGRES_PASSWORD=hydrosat_password
-      - POSTGRES_DB=hydrosat
+      - POSTGRES_USER=helical_user
+      - POSTGRES_PASSWORD=helical_password
+      - POSTGRES_DB=helical
       - PGDATA=/var/lib/postgresql/data
     volumes:
       - ./data/postgres/data/:/var/lib/postgresql/data

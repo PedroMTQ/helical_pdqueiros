@@ -11,11 +11,11 @@ from dagster import (
     sensor,
 )
 
-from hydrosat_pdqueiros.defs.jobs import job_process_bounding_boxes, job_process_fields
-from hydrosat_pdqueiros.defs.partitions import DAILY_PARTITIONS
-from hydrosat_pdqueiros.services.io.logger import logger
-from hydrosat_pdqueiros.services.io.s3_client import ClientS3
-from hydrosat_pdqueiros.services.settings import (
+from helical_pdqueiros.defs.jobs import job_process_bounding_boxes, job_process_fields
+from helical_pdqueiros.defs.partitions import DAILY_PARTITIONS
+from helical_pdqueiros.services.io.logger import logger
+from helical_pdqueiros.services.io.s3_client import ClientS3
+from helical_pdqueiros.services.settings import (
     BOXES_FOLDER_INPUT,
     BOXES_FOLDER_OUTPUT,
     BOXES_SENSOR_SLEEP_TIME,

@@ -1,7 +1,7 @@
 
 from dagster import resource
 
-from hydrosat_pdqueiros.services.io.s3_client import ClientS3
+from helical_pdqueiros.services.io.s3_client import ClientS3
 
 
 @resource

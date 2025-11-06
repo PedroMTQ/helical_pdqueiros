@@ -4,17 +4,14 @@ from pathlib import Path
 
 import boto3
 
-from hydrosat_pdqueiros.services.io.logger import logger
-from hydrosat_pdqueiros.services.settings import (
+from helical_pdqueiros.io.logger import logger
+from helical_pdqueiros.settings import (
     AWS_ACCESS_KEY_ID,
     AWS_DEFAULT_REGION,
     AWS_SECRET_ACCESS_KEY,
-    BOXES_FOLDER_INPUT,
-    BOXES_FOLDER_OUTPUT,
-    BOXES_PATTERN,
-    FIELDS_FOLDER_INPUT,
-    FIELDS_FOLDER_OUTPUT,
-    FIELDS_PATTERN,
+    ANNOTATED_DATA_PATH,
+    NEW_ANNOTATED_DATA_PATH,
+    H5AD_PATTERN,
     S3_BUCKET,
 )
 
@@ -62,18 +59,11 @@ class ClientS3():
                 logger.debug(f'File skipped: {s3_path}')
         return res
 
-    def get_input_bounding_boxes(self) -> list[str]:
-        return self.get_files(prefix=BOXES_FOLDER_INPUT, file_name_pattern=BOXES_PATTERN)
+    def get_new_annotated_data(self) -> list[str]:
+        return self.get_files(prefix=NEW_ANNOTATED_DATA_PATH, file_name_pattern=H5AD_PATTERN)
 
-    def get_output_bounding_boxes(self) -> list[str]:
-        return self.get_files(prefix=BOXES_FOLDER_OUTPUT, file_name_pattern=BOXES_PATTERN)
-
-    def get_input_fields(self) -> list[str]:
-        return self.get_files(prefix=FIELDS_FOLDER_INPUT, file_name_pattern=FIELDS_PATTERN)
-
-    def get_output_fields(self) -> list[str]:
-        return self.get_files(prefix=FIELDS_FOLDER_OUTPUT, file_name_pattern=FIELDS_PATTERN)
-
+    def get_annotated_data(self) -> list[str]:
+        return self.get_files(prefix=ANNOTATED_DATA_PATH, file_name_pattern=H5AD_PATTERN)
 
     def download_file(self, s3_path: str, output_folder: str) -> str:
         '''

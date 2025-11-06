@@ -5,8 +5,8 @@ from pathlib import Path
 
 from dagster import InputContext, IOManager, OutputContext, io_manager
 
-from hydrosat_pdqueiros.services.core.documents.asset_data_document import AssetDataDocument
-from hydrosat_pdqueiros.services.io.s3_client import ClientS3
+from helical_pdqueiros.services.core.documents.asset_data_document import AssetDataDocument
+from helical_pdqueiros.services.io.s3_client import ClientS3
 
 
 class IOManagerInput(IOManager):

@@ -1,4 +1,22 @@
-# hydrosat-pdqueiros
+# helical-pdqueiros
+
+# NOTES
+
+Im using ./helical/examples/run_models/run_geneformer.py as a template
+
+#####
+
+
+
+
+
+
+
+
+
+
+
+
 
 Tools used
 - Amazon's [S3](https://eu-central-1.console.aws.amazon.com/s3) and Amazon's [ECR](https://eu-central-1.console.aws.amazon.com/ecr)
@@ -20,17 +38,6 @@ AWS_DEFAULT_REGION=
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 S3_BUCKET=
-
-#static variables
-DATE_FORMAT=%Y-%m-%d
-S3_DATE_REGEX=\d{4}-\d{2}-\d{2}
-FIELDS_FOLDER_INPUT=fields/input
-FIELDS_FOLDER_OUTPUT=fields/output
-BOXES_FOLDER_INPUT=boxes/input
-BOXES_FOLDER_OUTPUT=boxes/output
-FIELDS_PATTERN=fields_\d{4}-\d{2}-\d{2}(.*)?\.jsonl$
-BOXES_PATTERN=bounding_box_.*\.jsonl
-START_DATE=2025-06-02
 ```
 I've included a `.env-template` you can just rename to `.env` and add yhour AWS credentials.
 **After** this is done you can deploy:
@@ -52,23 +59,37 @@ minikube start
 terraform init
 terraform plan
 terraform apply
-# in another console you can check the dashboard with:
-minikube dashboard
 ```
 
-**If you are checking the minikube dashboard, make sure you use the correct namespace, i.e., "hydrosat-pdqueiros"**
+### Dashboards
+
+#### Minikube
+
+```
+# in another console you can check the dashboard with:
+minikube dashboard --port=8081
+```
+You can then open the provided link, e.g.,: `http://127.0.0.1:8081/api/v1/namespaces/kubernetes-dashboard/services/http:kubernetes-dashboard:/proxy/#/workloads?namespace=helical-pdqueiros`
+
+**If you are checking the minikube dashboard, make sure you use the correct namespace, i.e., "helical-pdqueiros"**
 
 Generally it will take some time for terraform to finish since it waits until all deployments are done
 
-You can already check the minikube dashboard, but later on to work with dagster you can do this to enable port forwarding:
-```bash
-export DAGSTER_WEBSERVER_POD_NAME=$(kubectl get pods --namespace hydrosat-pdqueiros -l "app.kubernetes.io/name=dagster,app.kubernetes.io/instance=dagster,component=dagster-webserver" -o jsonpath="{.items[0].metadata.name}")
-kubectl --namespace hydrosat-pdqueiros port-forward $DAGSTER_WEBSERVER_POD_NAME 8080:80
+You can check all the pods via the console with: 
+```
+kubectl get pods --namespace helical-pdqueiros
 ```
 
-and then go to `http://127.0.0.1:8080`
+#### Airflow
 
-**Note that port forwarding needs to be running whenever you want to work with dagster**
+Create a tunnel via minikube to inspect the Airflow dashboard:
+```
+minikube service apache-airflow-api-server -n helical-pdqueiros
+# or if you want to use a specific port:
+kubectl port-forward service/apache-airflow-api-server -n helical-pdqueiros 8000:8080 
+```
+
+And then go to the port you specified or randomly assigned by minikube: `http://127.0.0.1:8000/`
 
 
 ## Destroy deployment
@@ -76,6 +97,18 @@ and then go to `http://127.0.0.1:8080`
 ```bash
 terraform destroy
 ```
+
+Redis tends to hang while shutting down. You can skip things up with:
+```
+kubectl delete pod apache-airflow-redis-0  --namespace helical-pdqueiros --force
+```
+
+
+
+
+
+
+
 
 # Description
 
@@ -198,7 +231,7 @@ fields/input/01976dbcbdb77dc4b9b61ba545503b77/fields_2025-06-02.jsonl
 fields/output/01976dbcbdb77dc4b9b61ba545503b77/fields_2025-06-02.jsonl
 ```
 
-These data types are implemented as data classes `src/hydrosat_pdqueiros/services/core/documents/bounding_box_document.py` and `src/hydrosat_pdqueiros/services/core/documents/field_document.py`. 
+These data types are implemented as data classes `src/helical_pdqueiros/services/core/documents/bounding_box_document.py` and `src/helical_pdqueiros/services/core/documents/field_document.py`. 
 **Since we are not dong any real data transformations, I assume that fields are rectangular (similar to bounding boxes)**
 
 ## Dependencies testing
@@ -309,12 +342,12 @@ This section was the second develoment step, i.e., putting together the infrastr
 ```bash
 aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
 docker compose build
-docker tag hydrosat-pdqueiros:latest public.ecr.aws/d8n7f1a1/hydrosat_pdqueiros:latest
-docker push public.ecr.aws/d8n7f1a1/hydrosat_pdqueiros:latest
+docker tag helical-pdqueiros:latest public.ecr.aws/d8n7f1a1/helical_pdqueiros:latest
+docker push public.ecr.aws/d8n7f1a1/helical_pdqueiros:latest
 ```
 
 You should see an image here:
-https://eu-central-1.console.aws.amazon.com/ecr/repositories/public/996091555539/hydrosat_pdqueiros?region=eu-central-1
+https://eu-central-1.console.aws.amazon.com/ecr/repositories/public/996091555539/helical_pdqueiros?region=eu-central-1
 
 2. Start minikube with:
 ```bash
@@ -343,19 +376,19 @@ minikube dashboard
 List of changes:
 ```yaml
 global:
-  serviceAccountName: "hydrosat-pdqueiros"
+  serviceAccountName: "helical-pdqueiros"
 
 dagster-user-deployments:
   deployments:
-    - name: "hydrosat-pdqueiros"
+    - name: "helical-pdqueiros"
       image:
-        repository: "public.ecr.aws/d8n7f1a1/hydrosat_pdqueiros"
+        repository: "public.ecr.aws/d8n7f1a1/helical_pdqueiros"
         tag: latest
       dagsterApiGrpcArgs:
         - "--python-file"
-        - "src/hydrosat_pdqueiros/defs/definitions.py"
+        - "src/helical_pdqueiros/defs/definitions.py"
       envSecrets: 
-        - name: hydrosat-pdqueiros-secret
+        - name: helical-pdqueiros-secret
 ```
 
 Now run:
@@ -365,18 +398,18 @@ Now run:
 ```
 
 # if the namespace does not exist
-kubectl create namespace hydrosat-pdqueiros
+kubectl create namespace helical-pdqueiros
 # create the secret with the necessary env vars (if it doesnt exist)
 # make sure you always check the if you have the secret with 
-kubectl describe secret hydrosat-pdqueiros-secret -n hydrosat-pdqueiros
+kubectl describe secret helical-pdqueiros-secret -n helical-pdqueiros
 # if you don't run the command below
-kubectl create secret generic hydrosat-pdqueiros-secret --from-env-file=.env -n hydrosat-pdqueiros
+kubectl create secret generic helical-pdqueiros-secret --from-env-file=.env -n helical-pdqueiros
 
 # set minikube config 
 kubectl config use-context minikube
 # and check it
 kubectl config view
-kubectl config set-context minikube --namespace hydrosat-pdqueiros --cluster minikube --user=hydrosat-pdqueiros
+kubectl config set-context minikube --namespace helical-pdqueiros --cluster minikube --user=helical-pdqueiros
 
 
 # get dagster chart
@@ -386,7 +419,7 @@ helm repo update
 
 4. Add env variables as a K8s secret:
 ```bash
-kubectl create secret generic hydrosat-pdqueiros-secret --from-env-file=.env -n hydrosat-pdqueiros
+kubectl create secret generic helical-pdqueiros-secret --from-env-file=.env -n helical-pdqueiros
 ```
 
 
@@ -438,3 +471,6 @@ Congratulations for making it to the end! If you want a simplified versionn go b
 
 
 # Future TODO
+
+- Logs should be cleaned up and conflicts resolved, right now the Helical logger captures logs not sent to it. I'd also add more information on logging information, e.g., what I used for log formatting.
+- Use different K8s namespaces, for now everything is in helical-pdqueiros for simplicity sake. But we could have one for airlfow, monitoring, ray, etc

@@ -12,6 +12,11 @@ dependencies = [
     "uuid6",
     "boto3",
     "helical",
+    "mlflow",
+    "anndata",
+    "h5py",
+    "ray[data]",
+    # "anndata @ git+https://github.com/helicalAI/anndata",
 ]
 
 [dependency-groups]
@@ -25,7 +30,8 @@ directory_type = "project"
 root_module = "helical_pdqueiros"
 autoload_defs = true
 
-
+# [tool.hatch.metadata]
+# allow-direct-references = true
 
 [project.urls]
 Repository = "https://github.com/PedroMTQ/helical_pdqueiros.git"

@@ -2,11 +2,11 @@ import os
 
 from dagster import OpExecutionContext, Output, asset
 
-from hydrosat_pdqueiros.defs.partitions import DAILY_PARTITIONS
-from hydrosat_pdqueiros.services.core.documents.asset_data_document import AssetDataDocument
-from hydrosat_pdqueiros.services.core.documents.bounding_box_document import BoundingBoxDocument
-from hydrosat_pdqueiros.services.core.documents.field_document import FieldDocument
-from hydrosat_pdqueiros.services.settings import (
+from helical_pdqueiros.defs.partitions import DAILY_PARTITIONS
+from helical_pdqueiros.services.core.documents.asset_data_document import AssetDataDocument
+from helical_pdqueiros.services.core.documents.bounding_box_document import BoundingBoxDocument
+from helical_pdqueiros.services.core.documents.field_document import FieldDocument
+from helical_pdqueiros.services.settings import (
     BOXES_FOLDER_INPUT,
     BOXES_FOLDER_OUTPUT,
     FIELDS_FOLDER_INPUT,

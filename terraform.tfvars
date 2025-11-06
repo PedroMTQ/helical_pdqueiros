@@ -1,3 +1,2 @@
-# check with  `helm search repo dagster/dagster --versions | head -n 2`
-dagster_version = "1.10.20"
-namespace = "hydrosat-pdqueiros"
+# check with  `helm search repo apache-airflow/airflow --versions | head -n 2`
+namespace           = "helical-pdqueiros"

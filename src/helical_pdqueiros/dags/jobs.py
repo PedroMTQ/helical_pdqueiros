@@ -1,11 +1,11 @@
 from dagster import RetryPolicy, define_asset_job
 
-from hydrosat_pdqueiros.defs.assets import (
+from helical_pdqueiros.defs.assets import (
     asset_bounding_box,
     asset_fields,
 )
-from hydrosat_pdqueiros.defs.partitions import DAILY_PARTITIONS
-from hydrosat_pdqueiros.services.settings import RETRY_LIMIT
+from helical_pdqueiros.defs.partitions import DAILY_PARTITIONS
+from helical_pdqueiros.services.settings import RETRY_LIMIT
 
 RETRY_POLICY = RetryPolicy(max_retries=RETRY_LIMIT)
 

@@ -1,6 +1,7 @@
 
 variable "namespace" {
   type        = string
+  description = "The default namespace for Helical's exercise"
 }
 
 resource "kubernetes_namespace" "helical_pdqueiros_namespace" {

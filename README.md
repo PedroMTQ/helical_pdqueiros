@@ -91,6 +91,16 @@ kubectl port-forward service/apache-airflow-api-server -n helical-pdqueiros 8000
 
 And then go to the port you specified or randomly assigned by minikube: `http://127.0.0.1:8000/`
 
+### Ray
+
+I've setup my Ray worker specs in `raycluster.yaml`; I've done so according to my local machine with 1 GPU (10GB nvidia RTX 3080) and 23 CPUs and 32GB RAM.
+
+Create a tunnel via minikube to inspect the Ray dashboard:
+```
+kubectl port-forward service/helical-raycluster-head-svc -n helical-pdqueiros 8265:8265 
+```
+Go to `http://127.0.0.1:8265/#/overview` to see the Ray dashboard.
+
 
 ## Destroy deployment
 
@@ -103,9 +113,7 @@ Redis tends to hang while shutting down. You can skip things up with:
 kubectl delete pod apache-airflow-redis-0  --namespace helical-pdqueiros --force
 ```
 
-
-
-
+You can do the same with other problematic sticky pods, they'll be restarted anyhow.
 
 
 

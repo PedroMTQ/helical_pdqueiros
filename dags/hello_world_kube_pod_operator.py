@@ -12,7 +12,7 @@ default_args = {
 
 with DAG('hello_world_k8s', default_args=default_args, schedule='* * * * *') as dag:
     hello_world_task = KubernetesPodOperator(
-        task_id="hello_world_and_sleep",
+        task_id="hello_world_and_sleep_kube_pod_operator",
         namespace="default",
         image="busybox",
         cmds=["/bin/sh", "-c"],

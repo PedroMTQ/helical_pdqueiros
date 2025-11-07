@@ -10,7 +10,7 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
-with DAG('hello_world_k8s', default_args=default_args, schedule_interval='* * * * *') as dag:
+with DAG('hello_world_k8s', default_args=default_args, schedule='* * * * *') as dag:
     hello_world_task = KubernetesPodOperator(
         task_id="hello_world",
         namespace="default",

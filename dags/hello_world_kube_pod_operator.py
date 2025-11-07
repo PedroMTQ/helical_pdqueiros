@@ -10,9 +10,9 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
-with DAG('hello_world_k8s', default_args=default_args, schedule='1 * * * *') as dag:
+with DAG('dag.hello_world_and_sleep_kube_pod_operator', default_args=default_args, schedule='1 * * * *') as dag:
     hello_world_task = KubernetesPodOperator(
-        task_id="hello_world_and_sleep_kube_pod_operator",
+        task_id="task.hello_world_and_sleep_kube_pod_operator",
         namespace="default",
         image="busybox",
         cmds=["/bin/sh", "-c"],

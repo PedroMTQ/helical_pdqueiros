@@ -21,7 +21,7 @@ def hello_world():
     logger.info('I woke up after 60 seconds!')
 
 
-with DAG('hello_world_k8s', default_args=default_args, schedule='* * * * *') as dag:
+with DAG('hello_world_k8s', default_args=default_args, schedule='1 * * * *') as dag:
     hello_world_task = PythonOperator(
         task_id="hello_world_and_sleep_python_operator",
         python_callable=hello_world,

@@ -1,5 +1,4 @@
 
-
 resource "helm_release" "airflow" {
   name       = "apache-airflow"
   repository = "https://airflow.apache.org"
@@ -9,28 +8,56 @@ resource "helm_release" "airflow" {
   
   # Dependencies are now much simpler
   depends_on = [
-    kubernetes_namespace.helical_pdqueiros_namespace, 
+    kubernetes_namespace.helical_pdqueiros_namespace,
+    # kubernetes_persistent_volume_claim.airflow_dags_pvc
   ] 
 
-  set = [
-    { name = "airflow.executor", value = "CeleryExecutor" },
-
-    # https://airflow.apache.org/docs/helm-chart/stable/production-guide.html
-    { name = "createUserJob.useHelmHooks", value = "false" },
-    { name = "createUserJob.applyCustomEnv", value = "false" },
-    { name = "migrateDatabaseJob.useHelmHooks", value = "false" },
-    { name = "migrateDatabaseJob.applyCustomEnv", value = "false" },
-
-    { name = "postgresql.enabled", value = "true" },
-    
-    # using this image as suggested through an issue in airflow: https://github.com/apache/airflow/issues/56498
-    { name = "postgresql.image.repository", value = "bitnamilegacy/postgresql" },
-    { name = "postgresql.image.tag", value = "16.1.0-debian-11-r15" },
-
-    # 3. STORAGE FIX: Ensure the internal PostgreSQL uses a valid storage class for Minikube
-    { name = "postgresql.persistence.storageClass", value = "standard" },
-    
-    # Optional: enable webserver service
-    { name = "webserver.service.type", value = "LoadBalancer" },
-  ]
+  values = [
+      # The file function reads the content of the YAML file as a string
+      file("${path.module}/config/airflow.yaml")
+    ]
 }
+
+
+
+# resource "kubernetes_persistent_volume" "airflow_dags_pv" {
+#   metadata {
+#     name = "local-dags-pv"
+#   }
+#   spec {
+#     capacity = {
+#       storage = "5Gi"
+#     }
+    
+#     access_modes = ["ReadWriteMany"] 
+#     persistent_volume_source {
+#       host_path {
+#         # TODO in a prod environment, this would obviously be in a proper path. Unfortunately, it seems like the pods can't use path.root since they default to ./dags
+#         path = "/host_workspace/helical_pdqueiros/dags"
+#       }
+#     }
+#     # storage_class_name = "local-storage-manual" 
+#   }
+# }
+
+
+# resource "kubernetes_persistent_volume_claim" "airflow_dags_pvc" {
+#   metadata {
+#     name      = "local-dags-pvc"
+#     namespace = var.namespace   
+#   }
+#   spec {
+#     access_modes = ["ReadWriteMany"]
+#     resources {
+#       requests = {
+#         storage = "1Gi"
+#       }
+#     }
+#     # storage_class_name = "local-storage-manual" 
+#   }
+  
+#   depends_on = [
+#     kubernetes_namespace.helical_pdqueiros_namespace,
+#     kubernetes_persistent_volume.airflow_dags_pv,
+#   ]
+# }

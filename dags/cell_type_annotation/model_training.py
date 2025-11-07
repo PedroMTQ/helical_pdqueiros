@@ -1,15 +1,11 @@
 
 from airflow import DAG
-from airflow.operators.python_operator import PythonOperator
-from airflow.operators.python import BranchPythonOperator
+from airflow.providers.standard.operators.python import PythonOperator, BranchPythonOperator
 from airflow.providers.cncf.kubernetes.operators.kubernetes_pod import KubernetesPodOperator
 from datetime import datetime, timedelta
-from airflow.operators.empty import EmptyOperator
-from helical_pdqueiros.io.s3_client import ClientS3
-from helical_pdqueiros.io.logger import logger
-
+import os
 from airflow.sensors.python import PythonSensor
-
+from airflow.models import Variable
 CHECK_NEW_DATA_COUNT_TASK_ID = 'check_new_data_count'
 TRAIN_TASK_ID = 'train'
 
@@ -20,6 +16,10 @@ CLEAN_XCOM_TASK_ID = 'clean_xcom'
 START_TASK_ID = 'start'
 END_TASK_ID = 'end'
 
+KUBERNETES_NAMESPACE = Variable.get('KUBERNETES_NAMESPACE')
+IMAGE_NAME = Variable.get('IMAGE_NAME')
+print('here', KUBERNETES_NAMESPACE)
+
 
 def has_counts(list_files: list[str]):
     if not list_files:
@@ -28,6 +28,9 @@ def has_counts(list_files: list[str]):
 
 
 def check_for_new_annotated_data(**kwargs):
+    from helical_pdqueiros.io.s3_client import ClientS3
+    from helical_pdqueiros.io.logger import logger
+
     """Returns True if new annotated data is available in S3."""
     try:
         s3_client = ClientS3()
@@ -122,7 +125,7 @@ with DAG(
         task_id="extract_data",
         namespace=KUBERNETES_NAMESPACE,
         image=IMAGE_NAME,
-        cmds=["python", "-m", "extract"]
+        cmds=["python", "-m", "extract"],
         name="extract-data-pod",
         get_logs=True,
         is_delete_operator_pod=True,

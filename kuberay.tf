@@ -44,8 +44,9 @@ resource "helm_release" "kuberay_apiserver" {
 
 
 locals {
-  raycluster_manifest = yamldecode(file("${path.module}/raycluster.yaml"))
+  raycluster_manifest = yamldecode(file("${path.module}/config/raycluster.yaml"))
 }
+
 
 resource "kubernetes_manifest" "raycluster" {
   manifest = local.raycluster_manifest

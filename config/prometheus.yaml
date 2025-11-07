@@ -1,0 +1,32 @@
+# Configuration for the prometheus-community/kube-prometheus-stack Helm Chart
+
+# 1. Enable/Configure Prometheus and its Operator
+prometheus:
+  # This section configures the core Prometheus instance
+  prometheusSpec:
+    # Use additionalScrapeConfigs to add custom targets
+    additionalScrapeConfigs: |
+      # This is standard Prometheus scrape config format (YAML)
+      - job_name: 'airflow-otel-metrics'
+        # Targets the Service for your OpenTelemetry Collector
+        static_configs:
+          - targets: ['otel-collector-metrics.default.svc.cluster.local:4318']
+        # The metrics path for the Prometheus receiver in the OTel Collector
+        metrics_path: /metrics
+        # Use http since we're using the service name inside the cluster
+        scheme: http 
+
+# 2. Configure Grafana (Optional but Recommended)
+grafana:
+  enabled: true
+  adminPassword: my-secure-password
+  ingress:
+    # You will likely want to expose Grafana via an Ingress
+    enabled: false # Set to true and configure a hostname if needed for external access
+    # hostname: grafana.yourdomain.com
+    
+# 3. Disable specific exporters if you prefer to manage them separately or reduce resource usage
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false

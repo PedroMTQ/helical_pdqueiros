@@ -3,6 +3,41 @@
 # NOTES
 
 Im using ./helical/examples/run_models/run_geneformer.py as a template
+Some references:
+
+- for community edition airflow deployment (not being used): https://github.com/airflow-helm/charts
+
+# Useful commands:
+
+- Inspecting minikube:
+```bahs
+minikube ssh
+```
+- Get all pods:
+```bash
+kubectl get pods -n helical-pdqueiros 
+```
+- Inspecting a pod:
+```bash
+kubectl exec -it <pod-name> -n helical-pdqueiros -- /bin/bash
+```
+- Describing a pod: 
+```bash
+kubectl describe pod <pod-name> -n helical-pdqueiros
+```
+- Deleting a pod: 
+```bash
+kubectl delete pod <pod-name> -n helical-pdqueiros
+```
+- Restarting a pod:
+```bash
+kubectl rollout restart deployment <pod-name> -n helical-pdqueiros
+```
+- get chart default values, e.g., for airflow:
+```bash
+helm show values apache-airflow/airflow > default-values.yaml
+```
+You can use this to cross-reference against specific config/*.yaml
 
 #####
 
@@ -53,13 +88,24 @@ aws ecr-public get-login-password --region us-east-1 | docker login --username A
 ## Deployment
 
 
-```
-minikube start
+```bash
+# I'm mounting my workspace to minikube so that I can mount the dags into my airflow pods. In a prod env you'd pull the dags from git instead. Make sure you use the mount and driver since we need them for sharing the Airflow DAGs
+minikube start --mount --mount-string="/home/pedroq/workspace:/host_workspace" --driver=docker
 # then start terraforming...
 terraform init
+# we do this due to a known issue with the CRD installation planning. So we force deployment first since other pods depend on it.
+terraform apply -target=helm_release.kuberay_operator
 terraform plan
 terraform apply
 ```
+
+If you want to update the chart versions just check the repos you have with `helm repo list` and check the respective repo, e.g., `helm search repo grafana`
+
+To check pods status:
+```bash
+kubectl get pods --namespace helical-pdqueiros
+```
+
 
 ### Dashboards
 
@@ -90,10 +136,11 @@ kubectl port-forward service/apache-airflow-api-server -n helical-pdqueiros 8000
 ```
 
 And then go to the port you specified or randomly assigned by minikube: `http://127.0.0.1:8000/`
+I'm using the default user and password: admin and admin
 
 ### Ray
 
-I've setup my Ray worker specs in `raycluster.yaml`; I've done so according to my local machine with 1 GPU (10GB nvidia RTX 3080) and 23 CPUs and 32GB RAM.
+I've setup my Ray worker specs in `config/raycluster.yaml`; I've done so according to my local machine with 1 GPU (10GB nvidia RTX 3080) and 23 CPUs and 32GB RAM.
 
 Create a tunnel via minikube to inspect the Ray dashboard:
 ```
@@ -106,10 +153,14 @@ Go to `http://127.0.0.1:8265/#/overview` to see the Ray dashboard.
 
 ```bash
 terraform destroy
+# or for full deletion:
+kubectl delete all --all -n helical-pdqueiros --force
+kubectl delete namespace helical-pdqueiros --force
+kubectl delete pv local-dags-pv --force
 ```
 
 Redis tends to hang while shutting down. You can skip things up with:
-```
+```bash
 kubectl delete pod apache-airflow-redis-0  --namespace helical-pdqueiros --force
 ```
 
@@ -349,9 +400,14 @@ This section was the second develoment step, i.e., putting together the infrastr
 
 ```bash
 aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
+# source code
 docker compose build
-docker tag helical-pdqueiros:latest public.ecr.aws/d8n7f1a1/helical_pdqueiros:latest
+docker tag helical-pdqueiros:latest public.ecr.aws/d8n7f1a1/helical_pdqueiros/helical_pdqueiros:latest
 docker push public.ecr.aws/d8n7f1a1/helical_pdqueiros:latest
+# airflow template code
+docker compose -f docker-compose-airflow.yaml build
+docker tag helical-pdqueiros-airflow:latest public.ecr.aws/d8n7f1a1/helical_pdqueiros_airflow:latest
+docker push public.ecr.aws/d8n7f1a1/helical_pdqueiros_airflow:latest
 ```
 
 You should see an image here:
@@ -377,29 +433,6 @@ minikube dashboard
 
 
 *The output of the image list should match with the service_image variable in `dagster-chart.yaml`* (see below)
-
-
-3. Deploy the service and dagster with [Helm](https://docs.dagster.io/deployment/oss/deployment-options/kubernetes/deploying-to-kubernetes). I've already set the chart file, so you don't need to change anything.
-
-List of changes:
-```yaml
-global:
-  serviceAccountName: "helical-pdqueiros"
-
-dagster-user-deployments:
-  deployments:
-    - name: "helical-pdqueiros"
-      image:
-        repository: "public.ecr.aws/d8n7f1a1/helical_pdqueiros"
-        tag: latest
-      dagsterApiGrpcArgs:
-        - "--python-file"
-        - "src/helical_pdqueiros/defs/definitions.py"
-      envSecrets: 
-        - name: helical-pdqueiros-secret
-```
-
-Now run:
 
 
 
@@ -433,39 +466,7 @@ kubectl create secret generic helical-pdqueiros-secret --from-env-file=.env -n h
 
 
 
-And deploy it:
-```bash
-helm upgrade --install dagster dagster/dagster -f dagster-chart.yaml
-```
 
-Check the dashboard and see if the pods are running
-![k8s_dashboard](images/k8s.png)
-
-You probably won't have any data in your bucket
-![k8s_dashboard](images/k8s_logs_no_data.png)
-
-So now just run the test sample creation with
-```bash
-source env.sh
-source activate.sh
-python tests/create_sample_data.py
-```
-
-You can then manually add the data to the bucket
-
-
-After adding bounding boxes data:
-
-![k8s_dashboard](images/k8s__logs_added_bounding_boxes.png)
-
-You can then see the dashboard and find that it ran some jobs:
-![k8s_dashboard](images/k8s_bounding_boxes_dashboarb.png)
-
-And one of the jobs:
-![k8s_dashboard](images/k8s_bounding_boxes_job.png)
-
-And if you check s3 you will the output from the job:
-![k8s_dashboard](images/s3_bounding_boxes_output.png)
 
 
 Now let's try with fields data:
@@ -482,3 +483,32 @@ Congratulations for making it to the end! If you want a simplified versionn go b
 
 - Logs should be cleaned up and conflicts resolved, right now the Helical logger captures logs not sent to it. I'd also add more information on logging information, e.g., what I used for log formatting.
 - Use different K8s namespaces, for now everything is in helical-pdqueiros for simplicity sake. But we could have one for airlfow, monitoring, ray, etc
+
+
+# Known issues
+
+1. Terraform apply Kuberay issues:
+```
+╷
+│ Error: API did not recognize GroupVersionKind from manifest (CRD may not be installed)
+│ 
+│   with kubernetes_manifest.raycluster,
+│   on kuberay.tf line 51, in resource "kubernetes_manifest" "raycluster":
+│   51: resource "kubernetes_manifest" "raycluster" {
+│ 
+│ no matches for kind "RayCluster" in group "ray.io"
+╵
+```
+
+When this happens you can:
+```bash
+# run this first to first install the kuberay CRD 
+terraform apply -target=helm_release.kuberay_operator
+# deploy the rest
+terraform apply
+```
+
+2. Mounting issues. Sometimes minikube won't mount the volume correctly. If that happens, you can mount it manually with:
+```bash
+minikube mount "/home/pedroq/workspace:/host_workspace"
+```

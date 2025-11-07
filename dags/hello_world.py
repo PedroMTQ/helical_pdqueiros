@@ -12,10 +12,14 @@ default_args = {
 
 with DAG('hello_world_k8s', default_args=default_args, schedule='* * * * *') as dag:
     hello_world_task = KubernetesPodOperator(
-        task_id="hello_world",
+        task_id="hello_world_and_sleep",
         namespace="default",
         image="busybox",
-        cmds=["echo", "Hello World"],
+        cmds=["/bin/sh", "-c"],
+        arguments=[
+            # The actual commands to execute: echo, then sleep, then echo again.
+            "echo 'Hello World, I am about to sleep!'; sleep 60; echo 'I woke up after 60 seconds!'"
+        ],
         name="hello-world-pod",
         get_logs=True,
         is_delete_operator_pod=True,

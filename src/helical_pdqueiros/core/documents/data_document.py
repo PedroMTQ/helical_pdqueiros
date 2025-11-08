@@ -21,7 +21,7 @@ class DataDocument():
         if not self.data and not self.file_path:
             raise Exception(f'We need either data or file_path to create this {self.__class__.__name__} object')
         if not self.data:
-            self.data = ad.read_h5ad(self.file_path)
+            self.data: ad.AnnData = ad.read_h5ad(self.file_path)
         self.n_obs = self.data.n_obs
         self.n_vars = self.data.n_vars
 
@@ -57,7 +57,6 @@ class DataDocument():
             chunk_file_path = os.path.join(file_parent_path, chunk_file_name)
             chunk_document = DataDocument(data=chunk, file_path=chunk_file_path, _id=chunk_id)
             yield chunk_document
-            break
 
 
 if __name__ == '__main__':

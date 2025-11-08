@@ -1,9 +1,15 @@
+x-storage-common:
+  &storage-common
+    # there were permisisons issues due to mapped volume, so let's do this for prototyping
+    user: "0:0"
+    networks:
+      - helical-network
+
 # https://github.com/mlflow/mlflow/tree/master/docker-compose
 services:
   minio:
+    <<: *storage-common
     container_name: storage-minio
-    networks:
-      - helical-network
     # later versions don't have the access keys UI
     image: quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z
     volumes:
@@ -24,9 +30,9 @@ services:
 
 
   postgres:
+    <<: *storage-common
+
     image: postgres:15
-    networks:
-      - helical-network
     container_name: storage-mlflow-postgres
     environment:
       POSTGRES_USER: ${MLFLOW_POSTGRES_USER}
@@ -44,10 +50,9 @@ services:
 
 
   create-bucket:
+    <<: *storage-common
     image: minio/mc:latest
-    networks:
-      - helical-network
-    container_name: storage-mlflow-create-bucket
+    container_name: storage-minio-create-bucket
     depends_on:
       minio:
         condition: service_healthy
@@ -62,10 +67,10 @@ services:
     restart: "no"
 
   mlflow:
+    <<: *storage-common
+    # this image has some issues with env variables, it doesn't seem to read correctly the postgres env vars
     image: ghcr.io/mlflow/mlflow:${MLFLOW_VERSION}
     container_name: storage-mlflow-server
-    networks:
-      - helical-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,13 +79,16 @@ services:
       create-bucket:
         condition: service_completed_successfully
     environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
       # Backend store URI built from vars
       MLFLOW_BACKEND_STORE_URI: ${MLFLOW_BACKEND_STORE_URI}
 
       # S3/MinIO settings
       MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL}
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
-      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
       MLFLOW_S3_IGNORE_TLS: "true"
 
       # Server host/port

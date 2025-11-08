@@ -12,7 +12,7 @@ spec:
       spec:
         containers:
         - name: ray-head
-          image: rayproject/ray:2.5.0
+          image: rayproject/ray:2.48.0-py311
           resources:
             limits:
               cpu: "1"
@@ -36,18 +36,17 @@ spec:
         # Use a Ray image that includes CUDA and ML libraries
         containers:
         - name: ray-worker
-          image: rayproject/ray-ml:2.5.0-gpu  # <--- CRITICAL: Use a GPU image
+          image: rayproject/ray-ml:2.48.0.2c63f6-py311-gpu
           resources:
             requests:
               cpu: "16"
               memory: "16Gi"
-              nvidia.com/gpu: "1"  # <--- CRITICAL: Request 1 GPU
+              nvidia.com/gpu: "1"
             limits:
               cpu: "20"
               memory: "16Gi"
-              nvidia.com/gpu: "1"  # <--- CRITICAL: Request 1 GPU
+              nvidia.com/gpu: "1"
 
-        # OPTIONAL: Use nodeSelector to force these pods onto GPU-enabled nodes
         nodeSelector:
           # This label may vary based on your cloud/cluster setup
           gpu: "true"
@@ -64,7 +63,7 @@ spec:
       spec:
         containers:
         - name: ray-worker
-          image: rayproject/ray:2.5.0 # Use a standard Ray image
+          image: rayproject/ray-ml:2.48.0.bd91bf-py311-cpu
           resources:
           # I set this to a quite small number since I'm running it locally with 23 cores and 32GB RAM
             requests:

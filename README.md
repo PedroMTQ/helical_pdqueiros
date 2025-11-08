@@ -1,5 +1,30 @@
 # helical-pdqueiros
 
+# TODO
+
+
+
+- [] Setup Airflow (terraform):
+    - [] minimum setup with python operators
+    - [] setup with kubernetes pods
+    - [] setup with Ray work distribution
+- [] Setup Minio for data storage (terraform)
+- [] Setup Ray for distributed computing (terraform)
+- [] Setup Mlflow for model versioning (terraform)
+- [] Setup Prometheus+Grafana for monitoring (terraform)
+- [] Build training pipeline: 
+    - [] DAG with sensor for downloading h5ad (task), splitting data into chunks (task) and uploading unprocessed h5ad chunks to S3 (task)
+    - [] DAG with sensor for download h5ad chunks (task), processing h5ad chunks (task), and uploading processed h5ad chunks to s3 (task)
+    - [] DAG with sensor for reading processed h5ad chunks, training model from streamed chunks, and logging into Mlflow (task)
+    - [] publish image with src code for all tasks
+- [] define hardware with Ray
+- [] define model-specific parameters, e.g., precision
+- [] create grafana dashboards:
+    - [] cadvisor for resources profiling
+    - [] dag duration and counts
+
+
+
 # NOTES
 
 Im using ./helical/examples/run_models/run_geneformer.py as a template
@@ -43,7 +68,16 @@ You can use this to cross-reference against specific config/*.yaml
 
 
 
+# Docker deployment
 
+```bash
+source env.sh
+# deploys mlflow and minio (for mlflow and "cloud" storage)
+# recipe: https://github.com/mlflow/mlflow/tree/master/docker-compose
+docker compose -f docker/docker-compose-storage.yaml up -d
+
+
+```
 
 
 
@@ -70,8 +104,8 @@ Tools used
 ```
 # credentials
 AWS_DEFAULT_REGION=
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
+S3_ACCESS_KEY=
+S3_SECRET_ACCESS_KEY=
 S3_BUCKET=
 ```
 I've included a `.env-template` you can just rename to `.env` and add yhour AWS credentials.
@@ -90,7 +124,8 @@ aws ecr-public get-login-password --region us-east-1 | docker login --username A
 
 ```bash
 # I'm mounting my workspace to minikube so that I can mount the dags into my airflow pods. In a prod env you'd pull the dags from git instead. Make sure you use the mount and driver since we need them for sharing the Airflow DAGs
-minikube start --mount --mount-string="/home/pedroq/workspace:/host_workspace" --driver=docker
+# minikube start --mount --mount-string="/home/pedroq/workspace:/host_workspace" --driver=docker
+minikube start
 # then start terraforming...
 terraform init
 # we do this due to a known issue with the CRD installation planning. So we force deployment first since other pods depend on it.
@@ -267,17 +302,7 @@ The bounding box processing has no dependencies.
 
 ## Data format
 
-Data is in jsonl format, both fields and bounding boxes have the same type of data, we just process them internally in a different manner.
-Bounding box:
-```
-{"box_id": "01976dbcbdb77dc4b9b61ba545503b77", "coordinates_x_min": 97, "coordinates_y_min": 28, "coordinates_x_max": 112, "coordinates_y_max": 42, "irrigation_array": [[1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1], [1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1], [1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0], [0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0], [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1], [1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1], [1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1], [0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1], [0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1], [1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1], [1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1], [1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1], [1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0], [0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0]], "is_processed": false}
-```
 
-Fields:
-```
-{"box_id": "01976dbcbdba78e1ba120a45b75e45da", "coordinates_x_min": 10, "coordinates_y_min": 6, "coordinates_x_max": 16, "coordinates_y_max": 8, "irrigation_array": [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]], "is_processed": false}
-{"box_id": "01976dbcbdb77dc4b9b61ba545503b77", "coordinates_x_min": 7, "coordinates_y_min": 4, "coordinates_x_max": 9, "coordinates_y_max": 6, "irrigation_array": [[0.0, 0.0], [0.0, 0.0]], "is_processed": false}
-```
 
 After processing, the flag `is_processed` is set to True.
 
@@ -320,8 +345,8 @@ The section below is mostly for development purposes; the only infra requirement
 
 ```
 AWS_DEFAULT_REGION=
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
+S3_ACCESS_KEY=
+S3_SECRET_ACCESS_KEY=
 S3_BUCKET=
 ```
 

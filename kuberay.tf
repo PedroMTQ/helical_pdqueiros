@@ -1,3 +1,43 @@
+
+variable "namespace" {
+  type        = string
+  description = "The default namespace for Helical's exercise"
+  default = "helical-pdqueiros"
+}
+
+resource "kubernetes_namespace" "helical_pdqueiros_namespace" {
+  metadata {
+    name = var.namespace
+  }
+}
+
+terraform {
+  required_providers {
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 3.1.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "2.38.0"
+    }
+  }
+}
+
+# if you are not using minikube you need to change these 2
+provider "kubernetes" {
+  config_path = "~/.kube/config"
+  config_context = "minikube"
+}
+
+provider "helm" {
+  kubernetes = {
+    config_path = "~/.kube/config"
+    config_context = "minikube"
+  }
+}
+
+
 resource "helm_release" "kuberay_operator" {
   name       = "kuberay-operator"
   repository = "https://ray-project.github.io/kuberay-helm/"
@@ -28,16 +68,6 @@ resource "helm_release" "kuberay_apiserver" {
   create_namespace = false
   atomic           = true
 
-  values = [
-    yamlencode({
-      service = {
-        type = "ClusterIP"
-        port = 8080
-      }
-      # optional authentication/authorization settings can go here
-      # see https://github.com/ray-project/kuberay/tree/master/helm-chart/kuberay-apiserver
-    })
-  ]
 
   depends_on = [helm_release.kuberay_operator]
 }

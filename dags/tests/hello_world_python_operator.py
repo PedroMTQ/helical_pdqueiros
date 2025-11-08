@@ -16,9 +16,10 @@ default_args = {
 
 def hello_world():
     from time import sleep
-    logger.info('Hello World, I am about to sleep!')
-    sleep(60)
-    logger.info('I woke up after 60 seconds!')
+    sleep_time = 10
+    logger.info(f'Hello World, I am about to sleep for {sleep_time} seconds!')
+    sleep(sleep_time)
+    logger.info(f'I woke up after {sleep_time} seconds!')
 
 
 with DAG('dag.hello_world_and_sleep_python_operator', default_args=default_args, schedule='1 * * * *') as dag:

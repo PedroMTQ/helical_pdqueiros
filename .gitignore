@@ -79,3 +79,5 @@ crash.log
 *.tfplan
 .terraform.tfstate.lock.info
 .default-values.yaml
+
+/tests/dataset.h5ad

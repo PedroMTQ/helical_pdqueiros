@@ -9,6 +9,7 @@ import logging
 import shutil
 from pathlib import Path
 from helical_pdqueiros.io.logger import setup_logger
+from helical_pdqueiros.settings import LABEL_NAME, DATASET_LABEL_NAME, MODEL_NAME
 
 logger = logging.getLogger(__name__)
 setup_logger(logger)
@@ -18,11 +19,11 @@ class CellTypeAnnotationDataProcessor(HelicalRNAModel):
     This is a copy of Helical's Geneformer, but I've decoupled the data processing from the model so that we can run it in a distributed environment without reloading the model per worker.
     """
 
-    def __init__(self, configurer: GeneformerConfig) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.configurer = configurer
-        self.config = configurer.config
-        self.files_config = configurer.files_config
+        self.configurer = GeneformerConfig(model_name=MODEL_NAME)
+        self.config = self.configurer.config
+        self.files_config = self.configurer.files_config
         self.tokenizer = TranscriptomeTokenizer(
             custom_attr_name_dict=self.config["custom_attr_name_dict"],
             nproc=self.config["nproc"],
@@ -37,13 +38,7 @@ class CellTypeAnnotationDataProcessor(HelicalRNAModel):
         # TODO the get_embedding should not be an abstractmethod if we decouple it
         return
 
-    # TODO Im not sure how ray handles pickling of the tokenizer, so we probably need large enough chunks to avoid overhead from loading tokenizer in multiple cores
-    def process_data(self,
-                     data_document: DataDocument,
-                     output_path: str,
-                     gene_names: str = "index",
-                     use_raw_counts: bool = True,
-                 ):
+    def process_data(self, data_document: DataDocument, output_path: str, gene_names: str = "index", use_raw_counts: bool = True):
         """
         Processes the data for the Geneformer model.
 
@@ -75,6 +70,7 @@ class CellTypeAnnotationDataProcessor(HelicalRNAModel):
         """
         logger.debug(f"Processing {data_document} for Geneformer.")
         adata: ad.AnnData = data_document.data
+        cell_types = list(adata.obs[LABEL_NAME])
         self.ensure_rna_data_validity(adata, gene_names, use_raw_counts)
         # map gene symbols to ensemble ids if provided
         if gene_names != "ensembl_id":
@@ -98,6 +94,7 @@ class CellTypeAnnotationDataProcessor(HelicalRNAModel):
         tokenized_dataset = self.tokenizer.create_dataset(tokenized_cells=tokenized_cells,
                                                           cell_metadata=cell_metadata,
                                                           use_generator=False)
+        tokenized_dataset = tokenized_dataset.add_column(DATASET_LABEL_NAME, cell_types)
         # TODO
         # we could add integration with S3 directly -> https://s3fs.readthedocs.io/en/latest/api.html#s3fs.core.S3FileSystem
         path_object = Path(output_path)
@@ -105,3 +102,9 @@ class CellTypeAnnotationDataProcessor(HelicalRNAModel):
         compressed_file = shutil.make_archive(output_path, format='tar', root_dir=path_object.parent, base_dir=path_object.name)
         logger.info(f"Successfully processed {data_document} for Geneformer and compressed it to {compressed_file}")
         return compressed_file
+
+
+if __name__ == '__main__':
+    task = CellTypeAnnotationDataProcessor()
+    data_doc = DataDocument(file_path='/home/pedroq/workspace/helical_pdqueiros/tests/dataset.h5ad')
+    task.process_data(data_document=data_doc, output_path='/home/pedroq/workspace/helical_pdqueiros/tmp/test.h5ad')

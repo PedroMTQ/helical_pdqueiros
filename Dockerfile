@@ -6,13 +6,13 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR "/app"
-COPY ./src/ /src/
-COPY ./uv.lock /uv.lock
-COPY ./pyproject.toml /pyproject.toml
-COPY ./README.md /README.md
+COPY ./src/ /app/src/
+COPY ./uv.lock /app/uv.lock
+COPY ./pyproject.toml /app/pyproject.toml
+COPY ./README.md /app/README.md
 
 # Extract version and add to a __version__ file which will be read by the service later
-RUN echo $(grep -m 1 'version' pyproject.toml | sed -E 's/version = "(.*)"/\1/') > __version__
+RUN echo $(grep -m 1 'version' /app/pyproject.toml | sed -E 's/version = "(.*)"/\1/') > /app/__version__
 
 RUN echo "Installing package"
 # installs package

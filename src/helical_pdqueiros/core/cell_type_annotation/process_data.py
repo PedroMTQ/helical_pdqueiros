@@ -17,10 +17,21 @@ setup_logger(logger)
 SLEEP_TIME = int(os.getenv('SLEEP_TIME', '0'))
 RAY_ENDPOINT = os.getenv('RAY_ENDPOINT', 'ray://localhost:10001')
 
+import sys
+@ray.remote
+def debug_env():
+    print("Python executable:", sys.executable)
+    import subprocess
+    output = subprocess.check_output(["pip", "list"]).decode()
+    print(output)
+
+
+
 @ray.remote
 def ray_process_data(input_path: str, output_path: str):
+    logger.debug(f'Processing data in {input_path}')
     data_document = DataDocument(file_path=input_path)
-    data_processor = CellTypeAnnotationDataProcessor(GeneformerConfig())
+    data_processor = CellTypeAnnotationDataProcessor()
     return data_processor.process_data(data_document=data_document, output_path=output_path)
 
 
@@ -42,10 +53,10 @@ class ProcessData(BaseTask):
 
     def process_data_with_base_python(self) -> list[str]:
         res = []
-        data_processor = CellTypeAnnotationDataProcessor(GeneformerConfig())
+        data_processor = CellTypeAnnotationDataProcessor()
         for file_name in os.listdir(LOCAL_CHUNKED_DATA_PATH):
             local_file_path = os.path.join(LOCAL_CHUNKED_DATA_PATH, file_name)
-            output_path = os.path.join(LOCAL_PROCESSED_DATA_PATH, file_name)
+            output_path = os.path.join(LOCAL_PROCESSED_DATA_PATH, f'{Path(file_name).stem}.dataset')
             logger.debug(f'Processing data in {local_file_path}')
             try:
                 data_document = DataDocument(file_path=local_file_path)
@@ -64,17 +75,26 @@ class ProcessData(BaseTask):
 
     # TODO
     def process_data_with_ray(self) -> list[str]:
-        ray.init(RAY_ENDPOINT, runtime_env={"py_executable": "uv run"})
+        # this was define in the Dockerfile-ray-cpu
+        ray.init(RAY_ENDPOINT, 
+                     runtime_env={
+                        "py_executable": "/app/.venv/bin/python",
+                        "env_vars": {
+                            "PATH": "/app/.venv/bin:$PATH",
+                            "PYTHONPATH": "/app/src:$PYTHONPATH",
+                        },
+                    },
+                )
         res = []
         to_delete = []
         to_process = []
+        to_process.append(debug_env.remote())
         for file_name in os.listdir(LOCAL_CHUNKED_DATA_PATH):
             local_file_path = os.path.join(LOCAL_CHUNKED_DATA_PATH, file_name)
-            output_path = os.path.join(LOCAL_PROCESSED_DATA_PATH, file_name)
-            logger.debug(f'Splitting data in {local_file_path}')
+            output_path = os.path.join(LOCAL_PROCESSED_DATA_PATH, f'{Path(file_name).stem}.dataset')
             to_delete.append(local_file_path)
-            to_process.append(ray_process_data.remote(input_path=local_file_path,
-                                                      output_path=output_path))
+            # to_process.append(ray_process_data.remote(input_path=local_file_path,
+            #                                           output_path=output_path))
 
         processed_data = ray.get(to_process)
         print('processed_data', processed_data)
@@ -118,4 +138,4 @@ class ProcessData(BaseTask):
 
 if __name__ == '__main__':
     task = ProcessData()
-    task.process_data_with_base_python()
+    task.process_data_with_ray()

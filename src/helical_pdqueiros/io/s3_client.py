@@ -133,6 +133,9 @@ class ClientS3():
             logger.error(f'Failed to upload {local_path} to {s3_path} due to {e}')
             return False
 
+    def read_file(self, s3_path: str) -> bytes:
+        return self.__client.get_object(Bucket=self.bucket_name, Key=s3_path)['Body'].read()
+
     def file_exists(self, s3_path: str) -> bool:
         try:
             self.__client.get_object(Bucket=self.bucket_name, Key=s3_path)
@@ -145,4 +148,6 @@ if __name__ == '__main__':
     client = ClientS3()
     # print(client.file_exists('boxes/output/bounding_box_01976a1225ca7e32a2daad543cb4391e.jsonl'))
     # print(client.get_files(FIELDS_FOLDER_OUTPUT, file_name_pattern='fields/input/01976dbcbdb77dc4b9b61ba545503b77/fields_2025-06-04-BATCH_2.jsonl', match_on_s3_path=True))
-    print(client.get_raw_data())
+    import json
+    print(json.loads(client.read_file('training_data/labels_set.json')))
+    

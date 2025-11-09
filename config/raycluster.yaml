@@ -10,12 +10,14 @@ spec:
       num-cpus: "0"
     serviceType: NodePort
 
-    
     template:
       spec:
         containers:
         - name: ray-head
-          image: helical-pdqueiros-cpu:latest
+          image: helical-pdqueiros-ray-cpu
+          tag: latest
+          # it just uses the local one that we built
+          imagePullPolicy: Never
           resources:
             requests:
               cpu: "1"
@@ -27,19 +29,38 @@ spec:
 
   # note that I've set the worker specs to my local machine but this ought to change in a cloud env
   workerGroupSpecs:
-  # ------------------------------------------------------------------
-  # 1. GPU Worker Group (for ML/Deep Learning tasks)
-  # ------------------------------------------------------------------
-  - groupName: gpu-worker-group
-    replicas: 0           # Start with 1 GPU worker
-    minReplicas: 0
-    maxReplicas: 1        # Auto-scale up to 5 GPU workers
+  - groupName: cpu-worker-group
+    # im using 1 replica as a starting point for testing purposes
+    replicas: 1
+    minReplicas: 1
+    maxReplicas: 10
     template:
       spec:
-        # Use a Ray image that includes CUDA and ML libraries
         containers:
         - name: ray-worker
-          image: helical-pdqueiros-gpu:latest
+          image: helical-pdqueiros-ray-cpu
+          tag: latest
+          imagePullPolicy: Never
+          resources:
+          # I set this to a quite small number since I'm running it locally with 23 cores and 32GB RAM
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "23"
+              memory: "32Gi"
+
+  - groupName: gpu-worker-group
+    replicas: 0
+    minReplicas: 0
+    maxReplicas: 1
+    template:
+      spec:
+        containers:
+        - name: ray-worker
+          image: helical-pdqueiros-ray-gpu
+          tag: latest
+          imagePullPolicy: Never
           resources:
             requests:
               cpu: "16"
@@ -51,27 +72,5 @@ spec:
               nvidia.com/gpu: "1"
 
         nodeSelector:
-          # This label may vary based on your cloud/cluster setup
           gpu: "true"
 
-  # ------------------------------------------------------------------
-  # 2. CPU Worker Group (for general purpose tasks)
-  # ------------------------------------------------------------------
-  - groupName: cpu-worker-group
-    # im using 1 replica as a starting point for testing purposes
-    replicas: 1
-    minReplicas: 1
-    maxReplicas: 10
-    template:
-      spec:
-        containers:
-        - name: ray-worker
-          image: helical-pdqueiros-cpu:latest
-          resources:
-          # I set this to a quite small number since I'm running it locally with 23 cores and 32GB RAM
-            requests:
-              cpu: "1"
-              memory: "2Gi"
-            limits:
-              cpu: "23"
-              memory: "32Gi"

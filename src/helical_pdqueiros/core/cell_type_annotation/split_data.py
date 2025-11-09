@@ -1,4 +1,4 @@
-from helical_pdqueiros.settings import RAW_DATA_PATH, BATCH_SIZE, LOCAL_RAW_DATA_PATH, LOCAL_CHUNKED_DATA_PATH, CHUNKED_DATA_PATH, RAW_DATA_ERROR_PATH, ARCHIVED_RAW_DATA_PATH
+from helical_pdqueiros.settings import RAW_DATA_PATH, CHUNK_BATCH_SIZE, LOCAL_RAW_DATA_PATH, LOCAL_CHUNKED_DATA_PATH, CHUNKED_DATA_PATH, RAW_DATA_ERROR_PATH, ARCHIVED_RAW_DATA_PATH
 from helical_pdqueiros.core.documents.data_document import DataDocument
 from helical_pdqueiros.core.base_task import BaseTask
 import os
@@ -32,7 +32,7 @@ class SplitData(BaseTask):
         res = []
         data_document = DataDocument(file_path=file_path)
         chunk: DataDocument
-        for chunk in data_document.yield_chunks(chunk_size=BATCH_SIZE):
+        for chunk in data_document.yield_chunks(chunk_size=CHUNK_BATCH_SIZE):
             local_chunk_file_path = chunk.save(output_folder=LOCAL_CHUNKED_DATA_PATH)
             res.append(local_chunk_file_path)
         return res

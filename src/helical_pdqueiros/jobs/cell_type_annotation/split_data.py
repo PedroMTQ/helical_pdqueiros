@@ -30,10 +30,10 @@ class SplitDataJob():
         chunked_files: list[str] = task.split_data()
         logger.info(f'Chunked files: {chunked_files}')
         sleep(SLEEP_TIME)
-        uploaded_files = task.upload_chunked_files(list_files=chunked_files)
+        uploaded_files: list[str] = task.upload_chunked_files(list_files=chunked_files)
         logger.info(f'Uploaded chunk files: {uploaded_files}')
         sleep(SLEEP_TIME)
-        archived_files = task.archive_raw_data(list_files=downloaded_files)
+        archived_files: list[str] = task.archive_raw_data(list_files=downloaded_files)
         logger.info(f'Archived files: {archived_files}')
 
 

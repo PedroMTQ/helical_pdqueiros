@@ -1,10 +1,11 @@
 from helical_pdqueiros.io.s3_client import ClientS3
 from helical_pdqueiros.settings import (
     H5AD_PATTERN)
-
+import json
 import os
 import logging
 from helical_pdqueiros.io.logger import setup_logger
+from helical_pdqueiros.settings import LOCAL_EXPERIMENT_DATA_PATH, EXPERIMENT_DATA_PATH
 
 
 logger = logging.getLogger(__name__)
@@ -37,3 +38,4 @@ class BaseTask():
                 self.s3_client.unlock_file(locked_s3_path=s3_path)
                 logger.error(f'Failed to download {s3_path} due to {e}')
         return res
+

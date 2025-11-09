@@ -19,7 +19,6 @@ class ProcessDataJob():
         '''
         Wrapper for dev testing, which would be replaced by Airflow
         '''
-        print('here')
         task = ProcessData()
         # this could also be parallized if a client actually uploads new training data often enough, but I'd imagine that is not the case
         downloaded_files : list[str] = task.download_data_to_process()
@@ -34,7 +33,7 @@ class ProcessDataJob():
         deleted_files: list[str] = task.delete_chunked_files(list_files=downloaded_files)
         logger.info(f'Deleted files: {deleted_files}')
         sleep(SLEEP_TIME)
-        uploaded_files = task.upload_processed_files(list_files=processed_files)
+        uploaded_files: list[str] = task.upload_processed_files(list_files=processed_files)
         logger.info(f'Uploaded processed files: {uploaded_files}')
 
 

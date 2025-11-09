@@ -2,13 +2,17 @@ import anndata as ad
 from helical.models.geneformer.geneformer_config import GeneformerConfig
 
 import os
-from helical_pdqueiros.io.logger import logger
 from helical_pdqueiros.core.documents.data_document import DataDocument
 import ray
+import logging
+from helical_pdqueiros.io.logger import setup_logger
 
+logger = logging.getLogger(__name__)
+setup_logger(logger)
 
 @ray.remote
 def ray_process_data(data_processor: CellTypeAnnotationDataProcessor, adata: ad.AnnData, dataset_id: str=None):
+    print('here')
     return data_processor.process_data(adata=adata, dataset_id=dataset_id)
 
 def test_batched_data_processing():

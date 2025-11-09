@@ -1,13 +1,16 @@
-from helical_pdqueiros.io.logger import logger
 from helical_pdqueiros.settings import RAW_DATA_PATH, BATCH_SIZE, LOCAL_RAW_DATA_PATH, LOCAL_CHUNKED_DATA_PATH, CHUNKED_DATA_PATH, RAW_DATA_ERROR_PATH, ARCHIVED_RAW_DATA_PATH
 from helical_pdqueiros.core.documents.data_document import DataDocument
 from helical_pdqueiros.core.base_task import BaseTask
 import os
 from pathlib import Path
 from retry import retry
+import logging
+from helical_pdqueiros.io.logger import setup_logger
 
 SLEEP_TIME = int(os.getenv('SLEEP_TIME', '0'))
 
+logger = logging.getLogger(__name__)
+setup_logger(logger)
 
 class SplitData(BaseTask):
     '''

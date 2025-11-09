@@ -29,7 +29,6 @@ def has_counts(list_files: list[str]):
 
 def check_for_new_annotated_data(**kwargs):
     from helical_pdqueiros.io.s3_client import ClientS3
-    from helical_pdqueiros.io.logger import logger
 
     """Returns True if new annotated data is available in S3."""
     try:

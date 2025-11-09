@@ -1,10 +1,12 @@
-from helical_pdqueiros.io.logger import logger
 from helical_pdqueiros.core.cell_type_annotation.split_data import SplitData
 import os
-
-
-SLEEP_TIME = int(os.getenv('SLEEP_TIME', '0'))
 from time import sleep
+import logging
+from helical_pdqueiros.io.logger import setup_logger
+
+logger = logging.getLogger(__name__)
+setup_logger(logger)
+SLEEP_TIME = int(os.getenv('SLEEP_TIME', '0'))
 
 
 

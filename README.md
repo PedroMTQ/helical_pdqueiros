@@ -70,15 +70,40 @@ You can use this to cross-reference against specific config/*.yaml
 
 # Docker deployment
 
+
+Build images for Airflow, the Docker operators and Ray workers
+```bash
+# There's 4 images here, 1 for airflow with additional requirements, one for a basic Helical run, and 2 others for the Ray workers (cpu and gpu)
+docker compose -f docker-compose--build.yaml build
+```
+
 ```bash
 source env.sh
 # deploys mlflow and minio (for mlflow and "cloud" storage)
 # recipe: https://github.com/mlflow/mlflow/tree/master/docker-compose
-docker compose -f docker/docker-compose-storage.yaml up -d
+docker compose -f docker-compose-storage.yaml up -d
+docker compose -f docker-compose-monitoring.yaml up -d
+docker compose -f docker-compose-airflow.yaml up -d
+```
+This will deploy all basic services with docker, including:
+- minio for S3 simulation and Mlflow storage
+- postgres for Mlflow and Airflow
+- Prometheus, Pushgateway, Cadvisor, Redis, Grafana, node-exporter, and otel-collector for monitoring. Otel-collector is used for Airflow monitoring, whereas the others are used for system and containers monitoring.
 
+
+
+
+```bash
+# starts a kubernetes
+minikube start
+# terraform ray deployment
+terraform apply
+# tunnel for Ray
+kubectl port-forward service/helical-raycluster-head-svc -n helical-pdqueiros 8265:8265  10001:10001
 
 ```
 
+Now wait for everything to be deployed
 
 
 
@@ -179,7 +204,7 @@ I've setup my Ray worker specs in `config/raycluster.yaml`; I've done so accordi
 
 Create a tunnel via minikube to inspect the Ray dashboard:
 ```
-kubectl port-forward service/helical-raycluster-head-svc -n helical-pdqueiros 8265:8265 
+kubectl port-forward service/helical-raycluster-head-svc -n helical-pdqueiros 8265:8265 6379:6379
 ```
 Go to `http://127.0.0.1:8265/#/overview` to see the Ray dashboard.
 

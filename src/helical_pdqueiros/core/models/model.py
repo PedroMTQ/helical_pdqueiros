@@ -1,13 +1,17 @@
+
 from helical.models.base_models import HelicalBaseFoundationModel
 from helical_pdqueiros.settings import MODELS, CUDA_DEVICE
 from helical_pdqueiros.io.mlflow_client import MlflowClient
-from helical_pdqueiros.io.logger import logger
 from abc import abstractmethod
 import os
 import mlflow
 from typing import Any
 
+import logging
+from helical_pdqueiros.io.logger import setup_logger
 
+logger = logging.getLogger(__name__)
+setup_logger(logger)
 
 class AbstractModel():
     '''

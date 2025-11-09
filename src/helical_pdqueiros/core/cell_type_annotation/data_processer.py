@@ -3,13 +3,19 @@ import anndata as ad
 from helical.models.geneformer.geneformer_tokenizer import TranscriptomeTokenizer
 from helical.models.geneformer.geneformer_config import GeneformerConfig
 from helical.utils.mapping import map_gene_symbols_to_ensembl_ids
-from typing import Optional
-from helical_pdqueiros.io.logger import logger
 from helical_pdqueiros.core.documents.data_document import DataDocument
+import logging
+import logging
+import shutil
+from pathlib import Path
+from helical_pdqueiros.io.logger import setup_logger
+
+logger = logging.getLogger(__name__)
+setup_logger(logger)
 
 class CellTypeAnnotationDataProcessor(HelicalRNAModel):
     """
-    This is a copy of the Geneformer, but I've decoupled the data processing from the model so that we can run it in a distributed environment without reloading the model per worker.
+    This is a copy of Helical's Geneformer, but I've decoupled the data processing from the model so that we can run it in a distributed environment without reloading the model per worker.
     """
 
     def __init__(self, configurer: GeneformerConfig) -> None:
@@ -34,8 +40,8 @@ class CellTypeAnnotationDataProcessor(HelicalRNAModel):
     # TODO Im not sure how ray handles pickling of the tokenizer, so we probably need large enough chunks to avoid overhead from loading tokenizer in multiple cores
     def process_data(self,
                      data_document: DataDocument,
+                     output_path: str,
                      gene_names: str = "index",
-                     output_path: Optional[str] = None,
                      use_raw_counts: bool = True,
                  ):
         """
@@ -92,6 +98,10 @@ class CellTypeAnnotationDataProcessor(HelicalRNAModel):
         tokenized_dataset = self.tokenizer.create_dataset(tokenized_cells=tokenized_cells,
                                                           cell_metadata=cell_metadata,
                                                           use_generator=False)
+        # TODO
+        # we could add integration with S3 directly -> https://s3fs.readthedocs.io/en/latest/api.html#s3fs.core.S3FileSystem
+        path_object = Path(output_path)
         tokenized_dataset.save_to_disk(output_path)
-        logger.info(f"Successfully processed {data_document} for Geneformer.")
-
+        compressed_file = shutil.make_archive(output_path, format='tar', root_dir=path_object.parent, base_dir=path_object.name)
+        logger.info(f"Successfully processed {data_document} for Geneformer and compressed it to {compressed_file}")
+        return compressed_file

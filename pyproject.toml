@@ -15,7 +15,7 @@ dependencies = [
     "mlflow",
     "anndata",
     "h5py",
-    "ray[data,train,tune]==2.6.0",
+    "ray[client,data,train,tune]==2.50.1",
     # "anndata @ git+https://github.com/helicalAI/anndata",
 ]
 

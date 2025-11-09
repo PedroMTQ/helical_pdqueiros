@@ -1,0 +1,33 @@
+
+# ! this is just to build service in src, deployment is done through terraform 
+
+services:
+  helical-pdqueiros:
+    container_name: helical-pdqueiros
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: helical-pdqueiros:latest
+
+  helical-pdqueiros-airflow:
+    container_name: helical-pdqueiros-airflow
+    build:
+      context: .
+      dockerfile: ./Dockerfile-airflow
+    image: helical-pdqueiros-airflow:latest
+
+  helical-pdqueiros-ray-cpu:
+    container_name: helical-pdqueiros-ray-cpu
+    build:
+      context: .
+      dockerfile: ./Dockerfile-ray-cpu
+    image: helical-pdqueiros-ray-cpu:latest
+
+  helical-pdqueiros-ray-gpu:
+    container_name: helical-pdqueiros-ray-gpu
+    build:
+      context: .
+      dockerfile: ./Dockerfile-ray-gpu
+    image: helical-pdqueiros-ray-gpu:latest
+
+# you can load it into minikube with: minikube image load helical-pdqueiros:latest

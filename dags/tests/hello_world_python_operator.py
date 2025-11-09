@@ -2,8 +2,10 @@ from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator, BranchPythonOperator
 from datetime import datetime, timedelta
 import logging
+from helical_pdqueiros.io.logger import setup_logger
 
 logger = logging.getLogger(__name__)
+setup_logger(logger)
 
 
 default_args = {

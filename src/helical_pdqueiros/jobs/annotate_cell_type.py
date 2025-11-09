@@ -1,3 +1,4 @@
+
 import logging
 import warnings
 from datasets import load_dataset
@@ -7,9 +8,7 @@ from helical.utils import get_anndata_from_hf_dataset
 import tempfile
 import os
 
-logging.getLogger().setLevel(logging.ERROR)
 
-warnings.filterwarnings("ignore")
 
 # dataset = load_dataset("helical-ai/yolksac_human", split="train[:10%]", trust_remote_code=True, download_mode="reuse_cache_if_exists")
 # labels = dataset["LVL1"]

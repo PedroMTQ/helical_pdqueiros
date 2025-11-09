@@ -2,13 +2,16 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 import anndata as ad
-from helical_pdqueiros.io.logger import logger
 import uuid6
+import logging
+from helical_pdqueiros.io.logger import setup_logger
+
+logger = logging.getLogger(__name__)
+setup_logger(logger)
 
 @dataclass
 class DataDocument():
     file_path: str = field(default=None)
-    _id: str = field(default=None)
     # I'm assuming that the client always provide the standard HDF5 file format
     data: ad.AnnData = field(default=None, repr=False)
     n_obs : int = field(default=None)
@@ -55,7 +58,7 @@ class DataDocument():
             chunk_id = uuid6.uuid7().hex
             chunk_file_name = f'{file_stem}__{chunk_id}{file_extension}'
             chunk_file_path = os.path.join(file_parent_path, chunk_file_name)
-            chunk_document = DataDocument(data=chunk, file_path=chunk_file_path, _id=chunk_id)
+            chunk_document = DataDocument(data=chunk, file_path=chunk_file_path)
             yield chunk_document
 
 

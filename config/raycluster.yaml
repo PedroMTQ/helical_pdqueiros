@@ -8,19 +8,22 @@ spec:
   headGroupSpec:
     rayStartParams:
       num-cpus: "0"
+    serviceType: NodePort
+
+    
     template:
       spec:
         containers:
         - name: ray-head
-          image: rayproject/ray:2.48.0-py311
+          image: helical-pdqueiros-cpu:latest
           resources:
-            limits:
-              cpu: "1"
-              # we could play around with this, but let's set it to 2gb for stability sake
-              memory: "2Gi"
             requests:
               cpu: "1"
-              memory: "2Gi"
+              memory: "4Gi"
+            limits:
+              cpu: "2"
+              # we could play around with this, but let's set it to 2gb for stability sake
+              memory: "8Gi"
 
   # note that I've set the worker specs to my local machine but this ought to change in a cloud env
   workerGroupSpecs:
@@ -36,7 +39,7 @@ spec:
         # Use a Ray image that includes CUDA and ML libraries
         containers:
         - name: ray-worker
-          image: rayproject/ray-ml:2.48.0.2c63f6-py311-gpu
+          image: helical-pdqueiros-gpu:latest
           resources:
             requests:
               cpu: "16"
@@ -63,7 +66,7 @@ spec:
       spec:
         containers:
         - name: ray-worker
-          image: rayproject/ray-ml:2.48.0.bd91bf-py311-cpu
+          image: helical-pdqueiros-cpu:latest
           resources:
           # I set this to a quite small number since I'm running it locally with 23 cores and 32GB RAM
             requests:

@@ -81,4 +81,5 @@ locals {
 resource "kubernetes_manifest" "raycluster" {
   manifest = local.raycluster_manifest
   depends_on = [helm_release.kuberay_operator]
+  
 }

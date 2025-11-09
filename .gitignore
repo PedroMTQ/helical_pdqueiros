@@ -65,7 +65,6 @@ var/
 data/*
 !data/readme.md
 
-.env
 archive/
 tests/data/
 tmp/
@@ -80,4 +79,5 @@ crash.log
 .terraform.tfstate.lock.info
 .default-values.yaml
 
-/tests/dataset.h5ad
+/tests/
+.pybiomart.sqlite

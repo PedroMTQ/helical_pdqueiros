@@ -1,11 +1,9 @@
 import os
 import re
 from pathlib import Path
-from dataclasses import dataclass, field
 from enum import Enum
 import boto3
 from botocore.client import Config
-from helical_pdqueiros.io.logger import logger
 from helical_pdqueiros.settings import (
     S3_ACCESS_KEY,
     S3_SECRET_ACCESS_KEY,
@@ -21,7 +19,11 @@ from helical_pdqueiros.settings import (
     HELICAL_S3_BUCKET,
 )
 
+import logging
+from helical_pdqueiros.io.logger import setup_logger
 
+logger = logging.getLogger(__name__)
+setup_logger(logger)
 
 
 
@@ -93,6 +95,14 @@ class ClientS3():
         self.move_file(current_path=locked_s3_path, new_path=s3_path)
         return s3_path
 
+    def delete_file(self, s3_path: str) -> bool:
+        try:
+            self.__client.delete_object(Bucket=self.bucket_name, Key=s3_path)
+            return True
+        except Exception as e:
+            logger.exception(f'Failed to delete {s3_path} due to {e}')
+            return False
+
     def move_file(self, current_path: str, new_path: str) -> str:
         try:
             self.__client.copy_object(Bucket=self.bucket_name, CopySource={'Bucket': self.bucket_name, 'Key': current_path}, Key=new_path)
@@ -112,11 +122,16 @@ class ClientS3():
         logger.debug(f'Downloaded {s3_path} to {output_folder}')
         return local_path
 
-    def upload_file(self, local_path: str, s3_path: str) -> None:
+    def upload_file(self, local_path: str, s3_path: str) -> bool:
         '''
         Uploads a local file to S3 at the given s3_path.
         '''
-        self.__client.upload_file(Filename=local_path, Bucket=self.bucket_name, Key=s3_path)
+        try:
+            self.__client.upload_file(Filename=local_path, Bucket=self.bucket_name, Key=s3_path)
+            return True
+        except Exception as e:
+            logger.error(f'Failed to upload {local_path} to {s3_path} due to {e}')
+            return False
 
     def file_exists(self, s3_path: str) -> bool:
         try:

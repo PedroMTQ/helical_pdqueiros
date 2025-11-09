@@ -1,3 +1,4 @@
+
 from helical.models.geneformer import Geneformer, GeneformerConfig
 # dataset = load_dataset("helical-ai/yolksac_human", split="train[:10%]", trust_remote_code=True, download_mode="reuse_cache_if_exists")
 # labels = dataset["LVL1"]
@@ -12,9 +13,12 @@ from helical.models.geneformer import Geneformer, GeneformerConfig
 # geneformer = Geneformer(configurer=model_config)
 
 
-from helical_pdqueiros.io.logger import logger
 from helical_pdqueiros.core.models.model import AbstractModel
+import logging
+from helical_pdqueiros.io.logger import setup_logger
 
+logger = logging.getLogger(__name__)
+setup_logger(logger)
 
 class CellTypeAnnotationModel(AbstractModel):
     model = Geneformer

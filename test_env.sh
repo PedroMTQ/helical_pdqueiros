@@ -6,4 +6,4 @@ export HEAD_POD=$(kubectl get pods -n helical-pdqueiros --selector=ray.io/identi
 set +a
 export MINIO_HOST=localhost
 export DEBUG=1
-export SLEEP_TIME=30
+export SLEEP_TIME=10

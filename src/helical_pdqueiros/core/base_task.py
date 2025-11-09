@@ -1,9 +1,14 @@
 from helical_pdqueiros.io.s3_client import ClientS3
-from helical_pdqueiros.io.logger import logger
 from helical_pdqueiros.settings import (
     H5AD_PATTERN)
 
 import os
+import logging
+from helical_pdqueiros.io.logger import setup_logger
+
+
+logger = logging.getLogger(__name__)
+setup_logger(logger)
 
 
 class BaseTask():

@@ -647,6 +647,7 @@ Repo todo:
 - I didn't follow any security measures, since this was done for prototyping, obviously don't use this repo in a production environment
 - I'd split the processes into multiple images, the data splitting and processing could be done via a very light image with minimal requirements.
 - Add metrics storage (maybe redis) and push to pushgateway (already deployed)
+- Find a way to retrieve data/xcom through the DockerOperators, which at the moment is not possible the containers are terminated automatically (as intended). In any case, using something like Redis would like be preferrable (and easy). 
 
 Helical todo:
 - fix logging

@@ -43,11 +43,11 @@ services:
     - /sys:/sys:ro
     - /var/lib/docker/:/var/lib/docker:ro
     depends_on:
-    - redis
-  redis:
-    container_name: monitoring-redis
+    - redis-monitoring
+  redis-monitoring:
+    container_name: redis-monitoring
     volumes:
-      - ./data/monitoring-redis/:/data
+      - ./data/redis-monitoring/:/data
     networks:
     - helical-network
     image: redis:latest

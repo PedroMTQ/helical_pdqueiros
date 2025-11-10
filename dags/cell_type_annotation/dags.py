@@ -27,7 +27,6 @@ def get_task(execution_type: Literal['split_data', 'process_data', 'fine_tune'])
                 Mount(source=LOCAL_DATA_PATH, target=CONTAINER_DATA_PATH, type='bind', read_only=False)
                     ],
             command=command_to_run,
-            environment ={"OTEL_EXPORTER_OTLP_ENDPOINT": "http://monitoring-otel-collector:4318"s},
             private_environment  = dotenv_values(ENV_FILE),
             api_version='1.51',
             network_mode="helical-network",

@@ -8,13 +8,9 @@ import os
 import mlflow
 import torch
 from datasets import concatenate_datasets, load_from_disk
-
-# from helical.models.geneformer import GeneformerConfig
 from helical.models.geneformer import GeneformerConfig, GeneformerFineTuningModel
 
 from helical_pdqueiros.io.logger import setup_logger
-
-# from helical_pdqueiros.core.models.cell_type_annotation.model import GeneformerFineTuningModel
 from helical_pdqueiros.settings import (
     CUDA_DEVICE,
     DATASET_LABEL_NAME,

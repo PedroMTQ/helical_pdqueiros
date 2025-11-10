@@ -7,7 +7,7 @@
 - [x] Setup Airflow (terraform):
     - [x] minimum setup with python operators
     - [x] setup with kubernetes pods
-    - [] setup with Ray work distribution
+    - [x] setup with Ray work distribution
 - [x] Setup Minio for data storage (terraform)
 - [] Setup Ray for distributed computing (terraform)
 - [x] Setup Mlflow for model versioning (terraform)
@@ -15,13 +15,15 @@
 - [] Build training pipeline: 
     - [x] DAG with sensor for downloading h5ad (task), splitting data into chunks (task) and uploading unprocessed h5ad chunks to S3 (task)
     - [x] DAG with sensor for download h5ad chunks (task), processing h5ad chunks (task), and uploading processed h5ad chunks to s3 (task)
-    - [] read processed h5ad chunks, training model from streamed chunks, and logging into Mlflow (task)
-    - [] publish image with src code for all tasks
+    - [x] read processed h5ad chunks, training model from streamed chunks, and logging into Mlflow (task)
+    - [x] publish image with src code for all tasks
+    - [] add Ray distributed work execution
 - [x] define hardware with Ray
-- [] define model-specific parameters, e.g., precision
-- [] create grafana dashboards:
+- [x] define model-specific parameters, e.g., precision
+- [x] create grafana dashboards:
     - [x] cadvisor for resources profiling
-    - [] dag duration and counts
+    - [x] dag duration
+    - [] dag counts
 
 
 
@@ -94,29 +96,30 @@ docker compose -f docker-compose-airflow.yaml up -d
 
 This will deploy all basic services with docker, including:
 - minio for S3 simulation and Mlflow storage
-- postgres for Mlflow and Airflow. Note that I used the base docker compose file from [Airflow](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html); you could also deploy Airflow via [Terraform](https://github.com/airflow-helm/charts). To avoid exposing the docker.sock I'm also deploying a proxy (docker-socket-proxy) as explained [here](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/tree/master)
+- postgres for Mlflow and Airflow. Note that I used the base docker compose file from [Airflow](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html); you could also deploy Airflow via [Terraform](https://github.com/airflow-helm/charts). To avoid exposing the docker.sock I'm also deploying a proxy (docker-socket-proxy) as explained [here](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/tree/master) and [here](https://medium.com/@benjcabalonajr_56579/using-docker-operator-on-airflow-running-inside-a-docker-container-7df5286daaa5).
 - Prometheus, Pushgateway, Cadvisor, Redis, Grafana, node-exporter, and otel-collector for monitoring. Otel-collector is used for Airflow monitoring, whereas the others are used for system and containers monitoring.
 
 Make sure you have all these containers:
 ```bash
-CONTAINER ID   IMAGE                                              COMMAND                   CREATED             STATUS                 PORTS                                                                                                                                                                                                                                                                             NAMES
-d6316072a006   gcr.io/k8s-minikube/kicbase:v0.0.47                "/usr/local/bin/entr…"    About an hour ago   Up About an hour       127.0.0.1:32783->22/tcp, 127.0.0.1:32784->2376/tcp, 127.0.0.1:32785->5000/tcp, 127.0.0.1:32786->8443/tcp, 127.0.0.1:32787->32443/tcp                                                                                                                                              minikube
-ea40b08255f0   helical-pdqueiros-airflow:latest                   "/usr/bin/dumb-init …"    2 hours ago         Up 2 hours (healthy)   8080/tcp                                                                                                                                                                                                                                                                          helical_pdqueiros-airflow-worker-1
-d85fe5b302a3   helical-pdqueiros-airflow:latest                   "/usr/bin/dumb-init …"    2 hours ago         Up 2 hours (healthy)   8080/tcp                                                                                                                                                                                                                                                                          helical_pdqueiros-airflow-triggerer-1
-867173977c0b   helical-pdqueiros-airflow:latest                   "/usr/bin/dumb-init …"    2 hours ago         Up 2 hours (healthy)   0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp                                                                                                                                                                                                                                       helical_pdqueiros-airflow-apiserver-1
-b57ca0cfd404   helical-pdqueiros-airflow:latest                   "/usr/bin/dumb-init …"    2 hours ago         Up 2 hours (healthy)   8080/tcp                                                                                                                                                                                                                                                                          helical_pdqueiros-airflow-dag-processor-1
-29423e8635f7   helical-pdqueiros-airflow:latest                   "/usr/bin/dumb-init …"    2 hours ago         Up 2 hours (healthy)   8080/tcp                                                                                                                                                                                                                                                                          helical_pdqueiros-airflow-scheduler-1
-24f7e5dd7595   redis:7.2-bookworm                                 "docker-entrypoint.s…"    2 hours ago         Up 2 hours (healthy)   6379/tcp                                                                                                                                                                                                                                                                          airflow-redis
-e819e6ec47fe   postgres:16                                        "docker-entrypoint.s…"    2 hours ago         Up 2 hours (healthy)   5432/tcp                                                                                                                                                                                                                                                                          airflow-postgres
-bf2517f2e8e3   ghcr.io/mlflow/mlflow:latest                       "/bin/bash -c '\n  pi…"   6 hours ago         Up 2 hours (healthy)   0.0.0.0:5000->5000/tcp, [::]:5000->5000/tcp                                                                                                                                                                                                                                       storage-mlflow-server
-afe59b44bb40   quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z   "/usr/bin/docker-ent…"    6 hours ago         Up 2 hours (healthy)   0.0.0.0:9000-9001->9000-9001/tcp, [::]:9000-9001->9000-9001/tcp                                                                                                                                                                                                                   storage-minio
-09007724462f   grafana/grafana-oss                                "/run.sh"                 10 hours ago        Up 2 hours             0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp                                                                                                                                                                                                                                       monitoring-grafana
-5f55669c0b09   prom/prometheus:latest                             "/bin/prometheus --w…"    10 hours ago        Up 2 hours             0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp                                                                                                                                                                                                                                       monitoring-prometheus
-a415c7abb3c7   gcr.io/cadvisor/cadvisor:latest                    "/usr/bin/cadvisor -…"    10 hours ago        Up 2 hours (healthy)   0.0.0.0:8082->8080/tcp, [::]:8082->8080/tcp                                                                                                                                                                                                                                       monitoring-cadvisor
-785a952c2a62   quay.io/prometheus/node-exporter:latest            "/bin/node_exporter …"    10 hours ago        Up 2 hours             0.0.0.0:9100->9100/tcp, [::]:9100->9100/tcp                                                                                                                                                                                                                                       monitoring-node-exporter
-6565d3faf8a1   prom/pushgateway                                   "/bin/pushgateway"        10 hours ago        Up 2 hours             0.0.0.0:9091->9091/tcp, [::]:9091->9091/tcp                                                                                                                                                                                                                                       monitoring-pushgateway
-58a3a583e8fd   otel/opentelemetry-collector-contrib               "/otelcol-contrib --…"    10 hours ago        Up 2 hours             0.0.0.0:1888->1888/tcp, [::]:1888->1888/tcp, 0.0.0.0:4317-4318->4317-4318/tcp, [::]:4317-4318->4317-4318/tcp, 0.0.0.0:8888-8889->8888-8889/tcp, [::]:8888-8889->8888-8889/tcp, 0.0.0.0:13133->13133/tcp, [::]:13133->13133/tcp, 0.0.0.0:55679->55679/tcp, [::]:55679->55679/tcp   monitoring-otel-collector
-
+IMAGE                                              NAMES                                       STATUS
+helical-pdqueiros-airflow:latest                   helical_pdqueiros-airflow-worker-1          Up 4 minutes (healthy)
+helical-pdqueiros-airflow:latest                   helical_pdqueiros-airflow-apiserver-1       Up 4 minutes (healthy)
+helical-pdqueiros-airflow:latest                   helical_pdqueiros-airflow-dag-processor-1   Up 4 minutes (healthy)
+helical-pdqueiros-airflow:latest                   helical_pdqueiros-airflow-triggerer-1       Up 4 minutes (healthy)
+helical-pdqueiros-airflow:latest                   helical_pdqueiros-airflow-scheduler-1       Up 4 minutes (healthy)
+postgres:16                                        postgres-airflow                            Up 5 minutes (healthy)
+redis:7.2-bookworm                                 redis-airflow                               Up 5 minutes (healthy)
+tecnativa/docker-socket-proxy:v0.4.1               airflow-docker-socket                       Up 5 minutes
+grafana/grafana-oss                                monitoring-grafana                          Up 5 minutes
+prom/prometheus:latest                             monitoring-prometheus                       Up 5 minutes
+gcr.io/cadvisor/cadvisor:latest                    monitoring-cadvisor                         Up 5 minutes (healthy)
+otel/opentelemetry-collector-contrib               monitoring-otel-collector                   Up 5 minutes
+quay.io/prometheus/node-exporter:latest            monitoring-node-exporter                    Up 5 minutes
+prom/pushgateway                                   monitoring-pushgateway                      Up 5 minutes
+redis:latest                                       redis-monitoring                            Up 5 minutes
+ghcr.io/mlflow/mlflow:latest                       storage-mlflow-server                       Up 5 minutes (healthy)
+postgres:16.4-bullseye                             postgres-mlflow                             Up 5 minutes (healthy)
+quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z   storage-minio                               Up 5 minutes (healthy)
 ```
 
 
@@ -562,7 +565,7 @@ Congratulations for making it to the end! If you want a simplified versionn go b
 
 # Known issues
 
-1. Terraform apply Kuberay issues:
+- Terraform apply Kuberay issues:
 ```
 ╷
 │ Error: API did not recognize GroupVersionKind from manifest (CRD may not be installed)
@@ -582,6 +585,12 @@ terraform apply -target=helm_release.kuberay_operator
 # deploy the rest
 terraform apply
 ```
+
+- If you have issues starting the docker operators due to this error:
+```bash
+HTTPError: 400 Client Error: Bad Request for url: http://airflow-docker-socket:2375/v1.51/containers/96fe8a3b85832292c1e456c20504c3f18e0190dcb31fefe33149ee0fee8db640/start
+```
+A docker or system reboot will fix the issue.
 
 
 # Useful commands and info
@@ -648,9 +657,15 @@ Repo todo:
 - I'd split the processes into multiple images, the data splitting and processing could be done via a very light image with minimal requirements.
 - Add metrics storage (maybe redis) and push to pushgateway (already deployed)
 - Find a way to retrieve data/xcom through the DockerOperators, which at the moment is not possible the containers are terminated automatically (as intended). In any case, using something like Redis would like be preferrable (and easy). 
+- Find a way to deal with orphan containers generated via docker operator. If you stop your DAG midway, this will happen:
+```bash
+APIError: 409 Client Error for http://airflow-docker-socket:2375/v1.51/containers/create?name=helical-pdqueiros.fine_tune: Conflict ("Conflict. The container name "/helical-pdqueiros.fine_tune" is already in use by container "1b410b96c8adeeba7241c252bfdf7cff1b038cce6535a8d736d6b4293566d91c". You have to remove (or rename) that container to be able to reuse that name.")
+```
+- I had some issues downloading the necessary data from AWS (e.g., `gene_median_dictionary.pkl`). I'm not sure why, when I `exec` into the container, I can download them via wget and through helical. But through the DockerOperator, Helical's download method always fails. To avoid that, I baked these files into the image, which  anyway is a better practice to make sure the image is truly static and requires no external data (remember what happened during the AWS outage?).
+
 
 Helical todo:
-- fix logging
+- fix logging (it's consuming too much and leading to weird behaviour)
 - clean up code in models
 - add accelerator to some of the models
 - migrate to hugging face trainer; not sure how feasible it is since some models have some specific internal behaviour
@@ -658,3 +673,13 @@ Helical todo:
 - Add dependencies grouping, the base pyproject is way too large, e.g.:
     - dependency group for data processing
     - dependency group per model -> I imagine you also run into compability issues quite often
+- Improve file path management
+- There's some weird behaviour in the data downloading. I think it's likely a permission issue with the Docker proxy, but I'm not entirely sure.
+```bash
+^^^^^^^^^^^^^^^^^^^^^^ source=airflow.task.operators.airflow.providers.docker.operators.docker.DockerOperator loc=docker.py:66
+[2025-11-10 22:09:36] INFO -   File "/app/.venv/lib/python3.11/site-packages/helical/models/geneformer/geneformer_tokenizer.py", line 256, in __init__ source=airflow.task.operators.airflow.providers.docker.operators.docker.DockerOperator loc=docker.py:66
+[2025-11-10 22:09:36] INFO -     with open(gene_median_file, "rb") as f: source=airflow.task.operators.airflow.providers.docker.operators.docker.DockerOperator loc=docker.py:66
+[2025-11-10 22:09:36] INFO -          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source=airflow.task.operators.airflow.providers.docker.operators.docker.DockerOperator loc=docker.py:66
+[2025-11-10 22:09:36] INFO - FileNotFoundError: [Errno 2] No such file or directory: '/root/.cache/helical/models/geneformer/v1/gene_median_dictionary.pkl' source=airflow.task.operators.airflow.providers.docker.operators.docker.DockerOperator loc=docker.py:66
+[2025-11-10 22:09:38] ERROR - Task failed with exception source=task loc=task_runner.py:977
+```

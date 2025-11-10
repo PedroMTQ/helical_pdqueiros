@@ -7,6 +7,7 @@ from helical.models.base_models import HelicalRNAModel
 from helical.models.geneformer.geneformer_config import GeneformerConfig
 from helical.models.geneformer.geneformer_tokenizer import TranscriptomeTokenizer
 from helical.utils.mapping import map_gene_symbols_to_ensembl_ids
+from retry import retry
 
 from helical_pdqueiros.core.documents.data_document import DataDocument
 from helical_pdqueiros.io.logger import setup_logger
@@ -19,7 +20,8 @@ class CellTypeAnnotationDataProcessor(HelicalRNAModel):
     """
     This is a copy of Helical's Geneformer, but I've decoupled the data processing from the model so that we can run it in a distributed environment without reloading the model per worker.
     """
-
+    # There's some weird issue with Helical's setup
+    @retry(tries=3, delay=2)
     def __init__(self) -> None:
         super().__init__()
         self.configurer = GeneformerConfig(model_name=MODEL_NAME)

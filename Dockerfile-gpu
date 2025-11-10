@@ -1,9 +1,26 @@
-FROM python:3.11.3-bullseye AS build
+FROM pytorch/pytorch:2.5.0-cuda12.4-cudnn9-runtime AS build
 
 ARG MODEL_TYPE
 ARG MODEL_VERSION
 ARG MODEL_NAME
 
+# This is based on Helical's image,I'd try to compress it a bit if possible
+
+RUN apt-get update -y \
+    && apt-get upgrade -y \
+    && apt-get -y install build-essential \
+        wget \
+        git \
+        curl \
+        gcc \
+        gfortran \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility 
+ENV NVIDIA_DRIVER_CAPABILITIES=all
+
+    
 # installs uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 # This makes sure that logs show up immediately instead of being buffered
@@ -21,6 +38,7 @@ RUN echo $(grep -m 1 'version' /app/pyproject.toml | sed -E 's/version = "(.*)"/
 RUN echo "Installing package"
 # installs package
 RUN uv sync --frozen
+RUN uv run pip install lightning wandb
 ENV PATH="/app/.venv/bin:$PATH"
 # I'm having some issues downloading from aws from within the containers, so I'm baking the files into it. Anyway, probably a better practice since we want the container to be static after being built
 RUN  wget -P /root/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/gene_median_dictionary.pkl

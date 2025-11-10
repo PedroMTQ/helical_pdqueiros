@@ -7,9 +7,27 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
+      args:
+        - MODEL_TYPE=${MODEL_TYPE}
+        - MODEL_VERSION=${MODEL_VERSION}
+        - MODEL_NAME=${MODEL_NAME}
     image: helical-pdqueiros:latest
     volumes:
       - ./data/helica_pdqueiros/:/app/data
+
+  helical-pdqueiros-gpu:
+    container_name: helical-pdqueiros-gpu
+    build:
+      context: .
+      dockerfile: ./Dockerfile-gpu
+      args:
+        - MODEL_TYPE=${MODEL_TYPE}
+        - MODEL_VERSION=${MODEL_VERSION}
+        - MODEL_NAME=${MODEL_NAME}
+    image: helical-pdqueiros:latest
+    volumes:
+      - ./data/helica_pdqueiros/:/app/data
+
 
   helical-pdqueiros-airflow:
     container_name: helical-pdqueiros-airflow

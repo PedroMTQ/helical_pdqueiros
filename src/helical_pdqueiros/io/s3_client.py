@@ -43,6 +43,15 @@ class ClientS3():
                                      endpoint_url=self.endpoint_url,
                                      config=config)
         self.test_s3_connection()
+        self.__locked_files = set()
+
+    def unlock_files_on_exception(self):
+        for locked_s3_path in list(self.__locked_files):
+            try:
+                self.unlock_file(locked_s3_path=locked_s3_path)
+                logger.warning(f'Unlocking on exception: {locked_s3_path}')
+            except Exception as e:
+                logger.error(f'Failed to unlock {locked_s3_path} due to {e}')
 
     def test_s3_connection(self):
         try:
@@ -81,11 +90,14 @@ class ClientS3():
         locked_s3_path = ClientS3.get_locked_file_path(s3_path)
         self.__client.copy_object(Bucket=self.bucket_name, CopySource={'Bucket': self.bucket_name, 'Key': s3_path}, Key=locked_s3_path)
         self.move_file(current_path=s3_path, new_path=locked_s3_path)
+        self.__locked_files.add(locked_s3_path)
         return locked_s3_path
 
     def unlock_file(self, locked_s3_path: str) -> str:
         s3_path = ClientS3.get_unlocked_file_path(locked_s3_path)
         self.move_file(current_path=locked_s3_path, new_path=s3_path)
+        if locked_s3_path in self.__locked_files:
+            self.__locked_files.remove(locked_s3_path)
         return s3_path
 
     def delete_file(self, s3_path: str) -> bool:

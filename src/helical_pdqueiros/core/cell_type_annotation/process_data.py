@@ -1,15 +1,22 @@
-from helical_pdqueiros.settings import LOCAL_CHUNKED_DATA_PATH, CHUNKED_DATA_PATH, CHUNKED_DATA_ERROR_PATH, PROCESSED_DATA_PATH, LOCAL_PROCESSED_DATA_PATH
-from helical_pdqueiros.core.documents.data_document import DataDocument
+import logging
+import os
+import shutil
+import sys
+from pathlib import Path
+
+import ray
+
 from helical_pdqueiros.core.base_task import BaseTask
 from helical_pdqueiros.core.cell_type_annotation.data_processer import CellTypeAnnotationDataProcessor
-import os
-from pathlib import Path
-from retry import retry
-import shutil
-import ray
-from helical.models.geneformer.geneformer_config import GeneformerConfig
-import logging
+from helical_pdqueiros.core.documents.data_document import DataDocument
 from helical_pdqueiros.io.logger import setup_logger
+from helical_pdqueiros.settings import (
+    CHUNKED_DATA_ERROR_PATH,
+    CHUNKED_DATA_PATH,
+    LOCAL_CHUNKED_DATA_PATH,
+    LOCAL_PROCESSED_DATA_PATH,
+    PROCESSED_DATA_PATH,
+)
 
 logger = logging.getLogger(__name__)
 setup_logger(logger)
@@ -17,7 +24,8 @@ setup_logger(logger)
 SLEEP_TIME = int(os.getenv('SLEEP_TIME', '0'))
 RAY_ENDPOINT = os.getenv('RAY_ENDPOINT', 'ray://localhost:10001')
 
-import sys
+
+
 @ray.remote
 def debug_env():
     print("Python executable:", sys.executable)
@@ -76,7 +84,7 @@ class ProcessData(BaseTask):
     # TODO
     def process_data_with_ray(self) -> list[str]:
         # this was define in the Dockerfile-ray-cpu
-        ray.init(RAY_ENDPOINT, 
+        ray.init(RAY_ENDPOINT,
                      runtime_env={
                         "py_executable": "/app/.venv/bin/python",
                         "env_vars": {

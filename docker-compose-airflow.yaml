@@ -57,13 +57,15 @@ x-airflow-common:
     - helical-network
   env_file:
     - ${ENV_FILE_PATH:-.env}
+  user: "${AIRFLOW_UID:-50000}:0"
   environment:
     &airflow-common-env
+
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres/airflow
-    AIRFLOW__CELERY__BROKER_URL: redis://:@airflow-redis:6379/0
+    AIRFLOW__CELERY__BROKER_URL: redis://:@airflow-redis:6378/0
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
@@ -81,9 +83,12 @@ x-airflow-common:
   volumes:
     - ./config/airflow.cfg:/opt/airflow/config/airflow.cfg
     - ./dags:/opt/airflow/dags
+    - ./data/helical-pdqueiros:/app/tmp/
     - ./plugins:/opt/airflow/plugins
+
     - ./data/airflow/logs:/opt/airflow/logs
-  user: "${AIRFLOW_UID:-50000}:0"
+    - .env:/app/.env
+    - /var/run/docker.sock:/var/run/docker.sock # Mount the host's Docker socket
   depends_on:
     &airflow-common-depends-on
     redis:
@@ -120,9 +125,10 @@ services:
     volumes:
       - ./data/airflow-redis/:/data
     expose:
-      - 6379
+      - 6378
+    command: ["redis-server", "--port", "6378"]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6378", "ping"]
       interval: 10s
       timeout: 30s
       retries: 50
@@ -344,6 +350,21 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+
+  docker-socket-proxy:
+    container_name: airflow-docker-socket
+    image: tecnativa/docker-socket-proxy:v0.4.1
+    networks:
+    - helical-network
+    environment:
+      CONTAINERS: 1
+      IMAGES: 1
+      AUTH: 1
+      POST: 1
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: always
 
 networks:
   helical-network:

@@ -1,6 +1,7 @@
-from helical_pdqueiros.settings import SERVICE_NAME, DEBUG
 import logging
 import sys
+
+from helical_pdqueiros.settings import DEBUG, SERVICE_NAME
 
 # this doesns't work, there's something wrong with Helical's logger, it's consuming all logs
 LOGGER = logging.getLogger(SERVICE_NAME)

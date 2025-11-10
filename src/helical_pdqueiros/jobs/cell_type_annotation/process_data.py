@@ -1,7 +1,8 @@
-from helical_pdqueiros.core.cell_type_annotation.process_data import ProcessData
+import logging
 import os
 from time import sleep
-import logging
+
+from helical_pdqueiros.core.cell_type_annotation.process_data import ProcessData
 from helical_pdqueiros.io.logger import setup_logger
 
 logger = logging.getLogger(__name__)
@@ -16,9 +17,6 @@ class ProcessDataJob():
     sensor for download h5ad chunks (task), processing h5ad chunks (task), and uploading processed h5ad chunks to s3 (task)
     '''
     def run(self):
-        '''
-        Wrapper for dev testing, which would be replaced by Airflow
-        '''
         task = ProcessData()
         # this could also be parallized if a client actually uploads new training data often enough, but I'd imagine that is not the case
         downloaded_files : list[str] = task.download_data_to_process()

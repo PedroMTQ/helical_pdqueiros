@@ -1302,7 +1302,6 @@ name = "helical-pdqueiros"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
-    { name = "accelerate" },
     { name = "anndata" },
     { name = "boto3" },
     { name = "h5py" },
@@ -1316,7 +1315,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "accelerate" },
     { name = "anndata" },
     { name = "boto3" },
     { name = "h5py" },

@@ -1,7 +1,8 @@
-from helical_pdqueiros.core.cell_type_annotation.split_data import SplitData
+import logging
 import os
 from time import sleep
-import logging
+
+from helical_pdqueiros.core.cell_type_annotation.split_data import SplitData
 from helical_pdqueiros.io.logger import setup_logger
 
 logger = logging.getLogger(__name__)
@@ -16,9 +17,6 @@ class SplitDataJob():
     '''
 
     def run(self):
-        '''
-        Wrapper for dev testing, which would be replaced by Airflow
-        '''
         task = SplitData()
         # this could also be parallized if a client actually uploads new training data often enough, but I'd imagine that is not the case
         downloaded_files : list[str] = task.download_data_to_split()

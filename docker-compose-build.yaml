@@ -8,6 +8,8 @@ services:
       context: .
       dockerfile: ./Dockerfile
     image: helical-pdqueiros:latest
+    volumes:
+      - ./data/helica_pdqueiros/:/app/data
 
   helical-pdqueiros-airflow:
     container_name: helical-pdqueiros-airflow

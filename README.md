@@ -15,7 +15,7 @@
 - [] Build training pipeline: 
     - [x] DAG with sensor for downloading h5ad (task), splitting data into chunks (task) and uploading unprocessed h5ad chunks to S3 (task)
     - [x] DAG with sensor for download h5ad chunks (task), processing h5ad chunks (task), and uploading processed h5ad chunks to s3 (task)
-    - [] DAG with sensor for reading processed h5ad chunks, training model from streamed chunks, and logging into Mlflow (task)
+    - [] read processed h5ad chunks, training model from streamed chunks, and logging into Mlflow (task)
     - [] publish image with src code for all tasks
 - [x] define hardware with Ray
 - [] define model-specific parameters, e.g., precision
@@ -70,7 +70,7 @@ To handle larger models and datasets efficiently, consider:
 
 
 
-I'm using this example as [template](./helical/examples/run_models/run_geneformer.py) for my code.
+I'm using this example from Helical as [template](./helical/examples/run_models/run_geneformer.py) for the workflow in this repo.
 
 
 
@@ -94,7 +94,7 @@ docker compose -f docker-compose-airflow.yaml up -d
 
 This will deploy all basic services with docker, including:
 - minio for S3 simulation and Mlflow storage
-- postgres for Mlflow and Airflow. Note that I used the base docker compose file from [Airflow](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html); you could also deploy Airflow via [Terraform](https://github.com/airflow-helm/charts).
+- postgres for Mlflow and Airflow. Note that I used the base docker compose file from [Airflow](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html); you could also deploy Airflow via [Terraform](https://github.com/airflow-helm/charts). To avoid exposing the docker.sock I'm also deploying a proxy (docker-socket-proxy) as explained [here](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/tree/master)
 - Prometheus, Pushgateway, Cadvisor, Redis, Grafana, node-exporter, and otel-collector for monitoring. Otel-collector is used for Airflow monitoring, whereas the others are used for system and containers monitoring.
 
 Make sure you have all these containers:
@@ -584,7 +584,7 @@ terraform apply
 ```
 
 
-# Useful commands
+# Useful commands and info
 
 These are some commands I've used during development; you don't necessarily need them, these are just some references for myself.
 
@@ -634,10 +634,25 @@ helm repo list
 helm search repo grafana
 ```
 
+- [Setting up docker.sock for Airflow DockerOperators](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/blob/master/docker-compose.yaml)
 
 # TODO
 
+Repo todo:
+- add GPU profiling
+- add Ray-gpu training
+- improve metrics dashboard
+- improve model scaling (there's a lot of new tools that could be useful for acceleration)
+- I've setup everything to be in the same docker network, but it could be better separated 
+- I didn't follow any security measures, since this was done for prototyping, obviously don't use this repo in a production environment
+- I'd split the processes into multiple images, the data splitting and processing could be done via a very light image with minimal requirements.
+
+Helical todo:
 - fix logging
-- clean up code ein models
+- clean up code in models
 - add accelerator to some of the models
 - migrate to hugging face trainer; not sure how feasible it is since some models have some specific internal behaviour
+- Add UV installation
+- Add dependencies grouping, the base pyproject is way too large, e.g.:
+    - dependency group for data processing
+    - dependency group per model -> I imagine you also run into compability issues quite often

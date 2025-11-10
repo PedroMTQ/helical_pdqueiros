@@ -1,26 +1,19 @@
+import logging
 import os
 import re
 from pathlib import Path
-from enum import Enum
+
 import boto3
 from botocore.client import Config
+
+from helical_pdqueiros.io.logger import setup_logger
 from helical_pdqueiros.settings import (
-    S3_ACCESS_KEY,
-    S3_SECRET_ACCESS_KEY,
+    HELICAL_S3_BUCKET,
     MINIO_HOST,
     MINIO_PORT,
-    RAW_DATA_PATH,
-    CHUNKED_DATA_PATH,
-    TRAINING_DATA_PATH,
-    PROCESSED_DATA_PATH,
-    LOCAL_RAW_DATA_PATH,
-    LOCAL_CHUNKED_DATA_PATH,
-    H5AD_PATTERN,
-    HELICAL_S3_BUCKET,
+    S3_ACCESS_KEY,
+    S3_SECRET_ACCESS_KEY,
 )
-
-import logging
-from helical_pdqueiros.io.logger import setup_logger
 
 logger = logging.getLogger(__name__)
 setup_logger(logger)
@@ -150,4 +143,4 @@ if __name__ == '__main__':
     # print(client.get_files(FIELDS_FOLDER_OUTPUT, file_name_pattern='fields/input/01976dbcbdb77dc4b9b61ba545503b77/fields_2025-06-04-BATCH_2.jsonl', match_on_s3_path=True))
     import json
     print(json.loads(client.read_file('training_data/labels_set.json')))
-    
+

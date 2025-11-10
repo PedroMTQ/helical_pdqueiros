@@ -1,7 +1,8 @@
 import importlib.metadata
-import torch
 import os
 from pathlib import Path
+
+import torch
 
 SERVICE_NAME = 'helical_pdqueiros'
 CODE_VERSION = importlib.metadata.version(SERVICE_NAME)
@@ -44,6 +45,7 @@ CHUNKED_DATA_ERROR_PATH = os.path.join(EXPERIMENT_DATA_PATH, os.getenv('CHUNKED_
 # where chunked processed data is stored
 PROCESSED_DATA_PATH = os.path.join(EXPERIMENT_DATA_PATH, os.getenv('PROCESSED_DATA', 'processed_data'))
 PROCESSED_DATA_ERROR_PATH = os.path.join(EXPERIMENT_DATA_PATH, os.getenv('PROCESSED_DATA_ERROR', 'processed_data_error'))
+ARCHIVED_PROCESSED_DATA_PATH = os.path.join(EXPERIMENT_DATA_PATH, os.getenv('ARCHIVED_PROCESSED_DATA', 'archived_processed_data'))
 
 
 LOCAL_EXPERIMENT_DATA_PATH = os.path.join(LOCAL_DATA, EXPERIMENT_DATA_PATH)
@@ -56,7 +58,8 @@ for folder_path in [TEMP, LOCAL_DATA, MODELS, LOCAL_EXPERIMENT_DATA_PATH, LOCAL_
     Path(folder_path).mkdir(parents=True, exist_ok=True)
 
 
-H5AD_PATTERN = '(.*\.h5ad)$'
+H5AD_PATTERN = r'(.*\.h5ad)$'
+DATASET_PATTERN = r'(.*\.dataset\.tar)$'
 CHUNK_BATCH_SIZE = int(os.getenv('CHUNK_BATCH_SIZE', '1000'))
 TRAINING_BATCH_SIZE = int(os.getenv('TRAINING_BATCH_SIZE', '2'))
 DATASET_LABEL_NAME = 'label'

@@ -9,6 +9,7 @@ maintainers = [{ name = "Pedro Queiros", email = "coding.paradox013@passmail.net
 dependencies = [
     "retry",
     "ruff",
+    "python-dotenv",
     "uuid6",
     "boto3",
     "helical",
@@ -30,8 +31,8 @@ directory_type = "project"
 root_module = "helical_pdqueiros"
 autoload_defs = true
 
-# [tool.hatch.metadata]
-# allow-direct-references = true
+[project.scripts]
+helical_pdqueiros = "helical_pdqueiros.__main__:main"
 
 [project.urls]
 Repository = "https://github.com/PedroMTQ/helical_pdqueiros.git"

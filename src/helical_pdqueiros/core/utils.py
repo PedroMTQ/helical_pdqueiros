@@ -1,5 +1,6 @@
 from typing import Iterable
 
+
 def batch_yielder(yielder, batch_size: int) -> Iterable[list]:
     '''
     yielder: list or yielder of items

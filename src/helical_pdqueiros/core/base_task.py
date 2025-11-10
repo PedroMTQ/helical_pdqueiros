@@ -13,9 +13,6 @@ class BaseTask():
     def __init__(self):
         self.s3_client = ClientS3()
 
-    def publish_metrics(self, ):
-        pass
-
     def download_data(self, s3_input_folder, local_output_folder: str, limit: int=None, file_name_pattern: str=H5AD_PATTERN, lock_files: bool=True) -> list[str]:
         if lock_files:
             return self.download_data_with_lock(s3_input_folder=s3_input_folder, local_output_folder=local_output_folder, limit=limit, file_name_pattern=file_name_pattern)

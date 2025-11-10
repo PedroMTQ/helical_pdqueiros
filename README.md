@@ -646,6 +646,7 @@ Repo todo:
 - I've setup everything to be in the same docker network, but it could be better separated 
 - I didn't follow any security measures, since this was done for prototyping, obviously don't use this repo in a production environment
 - I'd split the processes into multiple images, the data splitting and processing could be done via a very light image with minimal requirements.
+- Add metrics storage (maybe redis) and push to pushgateway (already deployed)
 
 Helical todo:
 - fix logging

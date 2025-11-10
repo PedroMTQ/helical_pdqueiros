@@ -16,6 +16,8 @@ class SplitDataJob():
     sensor for downloading h5ad (task), splitting data into chunks (task) and uploading unprocessed h5ad chunks to S3 (task)
     '''
 
+
+
     def run(self):
         task = SplitData()
         # this could also be parallized if a client actually uploads new training data often enough, but I'd imagine that is not the case
@@ -25,14 +27,15 @@ class SplitDataJob():
             logger.info('Terminating job since no data was found...')
             return
         sleep(SLEEP_TIME)
-        chunked_files: list[str] = task.split_data()
+        chunked_files : list[str] = task.split_data()
         logger.info(f'Chunked files: {chunked_files}')
         sleep(SLEEP_TIME)
-        uploaded_files: list[str] = task.upload_chunked_files(list_files=chunked_files)
+        uploaded_files : list[str] = task.upload_chunked_files(list_files=chunked_files)
         logger.info(f'Uploaded chunk files: {uploaded_files}')
         sleep(SLEEP_TIME)
         archived_files: list[str] = task.archive_raw_data(list_files=downloaded_files)
         logger.info(f'Archived files: {archived_files}')
+        self.flush_metrics()
 
 
 

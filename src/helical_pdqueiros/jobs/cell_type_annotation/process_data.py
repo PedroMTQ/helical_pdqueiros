@@ -16,6 +16,8 @@ class ProcessDataJob():
     '''
     sensor for download h5ad chunks (task), processing h5ad chunks (task), and uploading processed h5ad chunks to s3 (task)
     '''
+
+
     def run(self):
         task = ProcessData()
         # this could also be parallized if a client actually uploads new training data often enough, but I'd imagine that is not the case

@@ -9,6 +9,7 @@ from docker.types import Mount, DeviceRequest
 from dotenv import dotenv_values
 
 IMAGE_NAME = 'helical-pdqueiros:latest'
+IMAGE_NAME_GPU = 'helical-pdqueiros-gpu:latest'
 CONTAINER_DATA_PATH = '/app/tmp'
 LOCAL_DATA_PATH = '/home/pedroq/workspace/helical_pdqueiros/tmp'
 ENV_FILE = '/app/.env'
@@ -17,13 +18,13 @@ EXPERIMENT_NAME = os.getenv('EXPERIMENT_NAME', 'cell_type_classification')
 CUDA_DEVICE_ID = os.getenv('CUDA_DEVICE_ID', '')
 
 
-def get_task(execution_type: Literal['split_data', 'process_data', 'fine_tune'], device_requests: list=None, container_suffix: str=''):
+def get_task(execution_type: Literal['split_data', 'process_data', 'fine_tune'], image_name: str, device_requests: list=None):
     command_to_run = f'helical_pdqueiros {execution_type}'
     # https://airflow.apache.org/docs/apache-airflow-providers-docker/stable/_api/airflow/providers/docker/operators/docker/index.html
     return DockerOperator(
             task_id=f"run_helical_pdqueiros.{execution_type}",
-            container_name=f'helical-pdqueiros.{execution_type}{container_suffix}',
-            image=IMAGE_NAME,
+            container_name=f'helical-pdqueiros.{execution_type}',
+            image=image_name,
             mounts=[
                 # https://docker-py.readthedocs.io/en/stable/api.html?highlight=mount#docker.types.Mount
                 Mount(source=LOCAL_DATA_PATH, target=CONTAINER_DATA_PATH, type='bind', read_only=False)
@@ -47,8 +48,8 @@ with DAG(
     catchup=False,
     tags=["helical-pdqueiros", 'data_processing'],
     ) as dag:
-        split_data_task = get_task(execution_type='split_data')
-        process_data_task = get_task(execution_type='process_data')
+        split_data_task = get_task(execution_type='split_data', image_name=IMAGE_NAME)
+        process_data_task = get_task(execution_type='process_data', image_name=IMAGE_NAME)
         split_data_task >> process_data_task
 
 with DAG(
@@ -59,6 +60,6 @@ with DAG(
     tags=["helical-pdqueiros", 'fine_tuning'],
     ) as dag:
         fine_tune_task = get_task(execution_type='fine_tune',
-                                  container_suffix='-gpu',
-                                  device_requests=DeviceRequest(device_ids=[CUDA_DEVICE_ID.split(',')], capabilities=[['gpu']]) if CUDA_DEVICE_ID else None)
+                                  image_name=IMAGE_NAME_GPU,
+                                  device_requests=DeviceRequest(capabilities=[['gpu']]))
 

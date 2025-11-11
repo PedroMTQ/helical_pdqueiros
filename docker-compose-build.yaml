@@ -6,7 +6,7 @@ services:
     container_name: helical-pdqueiros
     build:
       context: .
-      dockerfile: ./Dockerfile
+      dockerfile: ./Dockerfile-cpu
       args:
         - MODEL_TYPE=${MODEL_TYPE}
         - MODEL_VERSION=${MODEL_VERSION}
@@ -23,7 +23,6 @@ services:
         - MODEL_VERSION=${MODEL_VERSION}
         - MODEL_NAME=${MODEL_NAME}
     image: helical-pdqueiros-gpu:latest
-
 
 
   helical-pdqueiros-airflow:
@@ -47,4 +46,3 @@ services:
       dockerfile: ./Dockerfile-ray-gpu
     image: helical-pdqueiros-ray-gpu:latest
 
-# you can load it into minikube with: minikube image load helical-pdqueiros:latest

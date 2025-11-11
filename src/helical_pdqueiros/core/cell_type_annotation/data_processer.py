@@ -100,11 +100,9 @@ class CellTypeAnnotationDataProcessor(HelicalRNAModel):
         tokenized_dataset = tokenized_dataset.add_column(DATASET_LABEL_NAME, cell_types)
         # TODO
         # we could add integration with S3 directly -> https://s3fs.readthedocs.io/en/latest/api.html#s3fs.core.S3FileSystem
-        path_object = Path(output_path)
         tokenized_dataset.save_to_disk(output_path)
-        compressed_file = shutil.make_archive(output_path, format='tar', root_dir=path_object.parent, base_dir=path_object.name)
-        logger.info(f"Successfully processed {data_document} for Geneformer and compressed it to {compressed_file}")
-        return compressed_file
+        logger.info(f"Successfully processed {data_document} for Geneformer")
+        return output_path
 
 
 if __name__ == '__main__':

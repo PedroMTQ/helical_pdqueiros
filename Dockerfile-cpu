@@ -23,11 +23,11 @@ RUN echo "Installing package"
 RUN uv sync --frozen
 ENV PATH="/app/.venv/bin:$PATH"
 # I'm having some issues downloading from aws from within the containers, so I'm baking the files into it. Anyway, probably a better practice since we want the container to be static after being built
-RUN  wget -P /root/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/gene_median_dictionary.pkl
-RUN  wget -P /root/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/token_dictionary.pkl
-RUN  wget -P /root/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/ensembl_mapping_dict.pkl
-RUN  wget -P /root/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/${MODEL_NAME}/config.json
-RUN  wget -P /root/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/${MODEL_NAME}/training_args.bin
+RUN  wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/gene_median_dictionary.pkl
+RUN  wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/token_dictionary.pkl
+RUN  wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/ensembl_mapping_dict.pkl
+RUN  wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/${MODEL_NAME}/config.json
+RUN  wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/${MODEL_NAME}/training_args.bin
 
 
 

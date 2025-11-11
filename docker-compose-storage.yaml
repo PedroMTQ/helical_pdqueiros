@@ -64,7 +64,7 @@ services:
           ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
         mc mb --ignore-existing myminio/${MLFLOW_S3_BUCKET:-mlflow} &&
         mc mb --ignore-existing myminio/${HELICAL_S3_BUCKET} &&
-        if ! mc admin accesskey create myminio --access-key ${S3_ACCESS_KEY} --secret-key ${S3_SECRET_ACCESS_KEY}; then
+        if ! mc admin accesskey create myminio --access-key ${AWS_ACCESS_KEY_ID} --secret-key ${AWS_SECRET_ACCESS_KEY}; then
           echo "Failed to create access key (exit code $?), it already probably existed?"
         fi
         
@@ -92,8 +92,8 @@ services:
 
       # S3/MinIO settings
       MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       MLFLOW_S3_IGNORE_TLS: "true"
 
       # Server host/port

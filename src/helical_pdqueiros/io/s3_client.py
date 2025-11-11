@@ -11,8 +11,8 @@ from helical_pdqueiros.settings import (
     HELICAL_S3_BUCKET,
     MINIO_HOST,
     MINIO_PORT,
-    S3_ACCESS_KEY,
-    S3_SECRET_ACCESS_KEY,
+    AWS_ACCESS_KEY_ID,
+    AWS_SECRET_ACCESS_KEY,
 )
 
 logger = logging.getLogger(__name__)
@@ -23,14 +23,12 @@ setup_logger(logger)
 class ClientS3():
     lock_string = '.lock'
     def __init__(self,
-                 aws_access_key: str=S3_ACCESS_KEY,
-                 aws_secret_access_key: str=S3_SECRET_ACCESS_KEY,
+                 aws_access_key: str=AWS_ACCESS_KEY_ID,
+                 aws_secret_access_key: str=AWS_SECRET_ACCESS_KEY,
                  s3_host: str=MINIO_HOST,
                  s3_port: str=MINIO_PORT,
                  # Im assuming we only use one bucket
                  bucket_name: str=HELICAL_S3_BUCKET):
-        self.__s3_access_key = aws_access_key
-        self.__s3_secret_access_key = aws_secret_access_key
         self.s3_host = s3_host
         self.s3_port = s3_port
         self.bucket_name = bucket_name
@@ -38,8 +36,8 @@ class ClientS3():
         config = Config(connect_timeout=5, retries={'max_attempts': 2})
         logger.debug(f'Trying to connect to {self.endpoint_url}')
         self.__client = boto3.client('s3',
-                                     aws_access_key_id=self.__s3_access_key,
-                                     aws_secret_access_key=self.__s3_secret_access_key,
+                                     aws_access_key_id=aws_access_key,
+                                     aws_secret_access_key=aws_secret_access_key,
                                      endpoint_url=self.endpoint_url,
                                      config=config)
         self.test_s3_connection()
@@ -59,6 +57,7 @@ class ClientS3():
             logger.debug(f"Connected to S3 bucket: {self.bucket_name}")
             return True
         except Exception as e:
+            logger.error(f"Failed to connect to S3 bucket: {self.bucket_name}")
             raise Exception(f"Error accessing bucket {self.bucket_name} due to: {e}") from e
 
     def get_files(self, prefix: str, file_name_pattern: str, match_on_s3_path: bool=False) -> list[str]:

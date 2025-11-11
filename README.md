@@ -78,17 +78,25 @@ I'm using this example from Helical as [template](./helical/examples/run_models/
 
 # Setup
 
-1. Install [Docker](https://docs.docker.com/engine/install/)
-2. Install [K8s](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
-3. Install [Terraform](https://developer.hashicorp.com/terraform/install)
-4. Install [minikube](https://minikube.sigs.k8s.io/docs/start/?arch=%2Flinux%2Fx86-64%2Fstable%2Fbinary+download). We are running minikube since we are deploying a k8s cluster locally.
+You need to have these installed on your machine:
+- Install [Docker](https://docs.docker.com/engine/install/)
+- Install [cuda](https://docs.nvidia.com/cuda/wsl-user-guide/index.html#cuda-support-for-wsl-2)
+
+These are optional, and you only need them if you want to use Ray for distributed computing:
+- Install [Helm](https://helm.sh/docs/intro/install/)
+- Install [K8s](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
+- Install [Terraform](https://developer.hashicorp.com/terraform/install)
+- Install [minikube](https://minikube.sigs.k8s.io/docs/start/?arch=%2Flinux%2Fx86-64%2Fstable%2Fbinary+download)
 
 
-## Deployment
+## Docker deployment
 
 ```bash
 # deploys mlflow and minio (for mlflow and "cloud" storage)
 # recipe: https://github.com/mlflow/mlflow/tree/master/docker-compose
+# builds our custom airflow image
+docker compose -f docker-compose-build.yaml build helical-pdqueiros-airflow
+# deploys the services
 docker compose -f docker-compose-storage.yaml up -d
 docker compose -f docker-compose-monitoring.yaml up -d
 docker compose -f docker-compose-airflow.yaml up -d
@@ -122,12 +130,184 @@ postgres:16.4-bullseye                             postgres-mlflow              
 quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z   storage-minio                               Up 5 minutes (healthy)
 ```
 
+The main tools here (i.e., that you actually might interact with) are : Airflow, Grafana, Mlflow, and Minio. All others are containers that are "supporting" these tools.
 
-Build the image for Airflow and respective Docker operators:
+Now that you are done deploying the services, you can now build the images for the containers that will be deployed by Airflow via Docker operators. There's 2 versions here, `helical-pdqueiros-cpu` is a small image that contains some CPU-only requirements, whereas `helical-pdqueiros-gpu` contains all the requirements for running the actual fine-tuning.
+
 ```bash
-docker compose -f docker-compose-build.yaml build helical-pdqueiros-airflow helical-pdqueiros
+docker compose -f docker-compose-build.yaml build helical-pdqueiros helical-pdqueiros-gpu
 ```
-This image contains all my source code as well as Helical's package (among a few other dependencies)
+
+This image contains all my source code as well as Helical's package (among a few other dependencies).
+
+Assuming everything was deployed correctly, you should now have access to all the necessary services and you can check their respective dashboards at:
+
+- [Minio](http://localhost:9001) (credentials: minio/minio123)
+- [Mlflow](http://localhost:5000)
+- [Grafana](http://localhost:3000/login) (credentials: admin/admin)
+- [Airflow](http://localhost:8080/) (credentials: airflow/airflow)
+- [Prometheus](http://localhost:9090/)
+
+
+When you access the [Minio](http://localhost:9001) dashboard, you should see 2 buckets: `helical` and `mlflow`; the `helical` bucket is where you will load your test data, which I've included in `tests/test_data.h5ad`.
+
+In [Airflow](http://localhost:8080/) you will see these DAGs:
+
+![airflow-dags](./images/airflow-dags.png)
+
+
+If you open [Grafana](http://localhost:3000/login) you will have multiple dashboards, this one among them where you can track system resources and Airflow runs. 
+# TODO add image
+
+
+
+
+# Workflow
+
+## Sample data and template workflow
+
+- Sample [data](https://huggingface.co/datasets/helical-ai/yolksac_human)
+- Sample [notebook](https://github.com/helicalAI/helical/blob/release/examples/notebooks/Cell-Type-Annotation.ipynb)
+
+## General workflow
+
+1. User adds data to S3 storage (via UI)
+2. When new data arrives, a Dag is triggered (as a POC I didn't include a schedule interval)
+3. Data is [split](#data-splitting)
+4. Data is [processed](#data-processing)
+5. Model is [fine-tuned](#model-fine-tuning) and logged into Mlflow
+
+
+Below you can find the underlying logic for each step (3-5). These were first created as Jobs for development and then deployed as Airflow Docker operators.
+
+### Data splitting
+
+
+```python
+
+class SplitDataJob():
+    def _run(self):
+        downloaded_files : list[str] = self.task.download_data_to_split()
+        if not downloaded_files:
+            return
+        chunked_files : list[str] = self.task.split_data()
+        uploaded_files : list[str] = self.task.upload_chunked_files(list_files=chunked_files)
+        archived_files: list[str] = self.task.archive_raw_data(list_files=downloaded_files)
+
+```
+
+### Data processing
+
+```python
+class ProcessDataJob():
+    def run(self):
+        downloaded_files : list[str] = self.task.download_data_to_process()
+        if not downloaded_files:
+            return
+        processed_files: list[str] = self.task.process_data()
+        deleted_files: list[str] = self.task.delete_chunked_files(list_files=downloaded_files)
+        uploaded_files: list[str] = self.task.upload_processed_files(list_files=processed_files)
+```
+
+### Model fine-tuning
+
+```python
+class FineTuneJob():
+    def _run(self):
+        downloaded_files : list[str] = self.task.download_data_to_fine_tune()
+        if not downloaded_files:
+            return
+        uncompressed_files: list[str] = self.task.uncompress_data(list_files=downloaded_files)
+        fine_tuning_files: list[str] = self.task.fine_tune(list_files=uncompressed_files)
+        archived_files: list[str] = self.task.archive_processed_data()
+```
+
+
+
+
+## Local testing
+
+You can test your DAGs locally without Airflow by running each job outside of Airflow, since in essence Airflow is merely providing scheduling and observability and all the business logic is within the `src` code.
+Keep in mind that I'm using [UV](https://docs.astral.sh/uv/getting-started/installation/) for environment management, which you can install with:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+After you install UV, you can run the following commands:
+```bash
+# creates the uv environment
+source activate.sh
+# sets up the environmental variables
+source env.sh
+```
+
+After you run this, you should be able to run:
+```bash
+helical_pdqueiros -h
+```
+
+Now, load some data into the `helical` bucket in [Minio](http://localhost:9001). I've included some sample data in `tests/`. Just drag and drop the whole `training_data` folder into [Minio](http://localhost:9001), like so:
+![minio-sample-data-1](./images/minio-sample-data-1.png)
+
+You can then see the sample data in this path:
+
+![minio-sample-data-2](./images/minio-sample-data-2.png)
+
+**Keep in mind that the name of the file is irrelevant (i.e., `sample_dataset`), HOWEVER the path (i.e., `helical/training_data/cell_type_classification/raw_data`) and extension `.h5ad`) of the files need to be respected!**
+
+Then run these commands to download all the necessary data. This is a fix to an issue within Helical's runtime download, which I assume will be resolved in the future.
+```bash
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/gene_median_dictionary.pkl
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/token_dictionary.pkl
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/ensembl_mapping_dict.pkl
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/${MODEL_NAME}/config.json
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/${MODEL_NAME}/training_args.bin
+```
+
+Afterwards, run the workflow in this order:
+```bash
+helical_pdqueiros split_data
+```
+After you run this, you will see 2 new folders within Minio `minio:helical/training_data/cell_type_classification/archived_raw_data` and `minio:helical/training_data/cell_type_classification/chunked_data`. The former contains your initial raw data, which is archived in case the pipeline needs to be run again, the latter contains the chunks of the initial data, which have been split to allow for distributed processing of the data.
+
+```bash
+helical_pdqueiros process_data
+```
+Now you can run the data processing, which will pick up a certain amount of chunks (i.e., `PROCESSING_CHUNKS_LIMIT`, 2 by default), process them and store them into `minio:helical/training_data/cell_type_classification/processed_data`. The idea of having a `PROCESSING_CHUNKS_LIMIT` variable is to allow for distributed computing, i.e., each DAG run picks up a certain number of chunks, and processes them in a distributed manner.
+Note that each chunk is compressed after the data is processed to reduce disk storage overhead.
+
+```bash
+helical_pdqueiros fine_tune
+```
+Now, the final step is the model fine-tuning. I'm using `gf-6L-10M-i2048` as the default since it's one of the smaller models.
+This pipeline will take all the recently processed data in `minio:helical/training_data/cell_type_classification/processed_data` and fine tune the `gf-6L-10M-i2048` model. This data will then be archived in `minio:helical/training_data/cell_type_classification/archived_processed_data` since I assume that it could be re-used for future runs of this pipeline. The idea here being that the downstream user adds new data, processes it, and then wants to use all of their (both new and archived) to fine-tune the initial model.
+
+*You should see this message `'gf-6L-10M-i2048' model is in 'eval' mode, on device 'cuda' with embedding mode 'cell'.` when running this pipeline; if you are not running GPU fine-tuning this pipeline will take quite a while.*
+
+You will also find the model logged into Mlflow, as shown below:
+
+![mlflow-model](./images/mlflow-model-1.png)
+![mlflow-model](./images/mlflow-model-2.png)
+
+Note that I'm logging the model (for experiment purposes) but not registering it, as you would do for serving the model. You could register it with :
+```bash
+model_uri = f"runs:/{run.info.run_id}/sklearn-model"
+mv = mlflow.register_model(model_uri, "RandomForestRegressionModel")
+```
+
+And that's the end of the pipeline. Later on the end-user could download the model from Mlflow and use it for classifying their data.
+
+
+
+### Airflow testing
+
+Now you can try the same in Airflow
+
+
+
+
+## Ray and K8s deployment
+
 
 Now, let's move on to the deployment of Ray, which as a POC, was done through Terraform. I have some other terraform deployments in `terraform`, but for the purpose of this exercise, I've only finalized Ray's terraform file `kuberay.tf`. The former terraform files *should* work but haven't been fully tested. For the airflow.tf you are probably better off using the community [charts](https://github.com/airflow-helm/charts).
 
@@ -138,12 +318,12 @@ Anyhow, moving on to the Ray's deployment.
 minikube start
 ```
 
-You then need to build the images that the Ray workers will use. To do so do, this:
+You then need to build the images that the Ray workers will use. We will only build the image for the ray-cpu as this is the only pipeline where Ray was integrated; the same could be done (and should) for distributed model training.
+
 ```bash
-# There's 4 images here, 1 for airflow with additional requirements, one for a basic Helical run, and 2 others for the Ray workers (cpu and gpu)
 eval $(minikube -p minikube docker-env)
 # now build:
-docker compose -f docker-compose-build.yaml build helical-pdqueiros-ray-cpu helical-pdqueiros-ray-gpu
+docker compose -f docker-compose-build.yaml build helical-pdqueiros-ray-cpu
 # Check that the images are available with:
 minikube image ls
 ```
@@ -207,7 +387,7 @@ kuberay-operator-6c8f855d77-8ghhz                  1/1     Running   0          
 ```
 
 
-## Shutting down and deleting everything
+##\ Shutting down and deleting everything
 
 Shutting everything down
 
@@ -222,18 +402,10 @@ docker compose -f docker-compose-airflow.yaml down
 
 
 
-# Dashboards
-
-List of dashboards when deployed through Docker:
-
-- [Minio](http://localhost:9001) (minio/minio123)
-- [Mlflow](http://localhost:5000)
-- [Grafana](http://localhost:3000/login) (admin/admin)
-- [Airflow](http://localhost:8080/) (admin/admin)
-- [Prometheus](http://localhost:9090/)
 
 
-## Minikube
+
+### Minikube dashboard
 
 ```
 # in another console you can check the dashboard with:
@@ -251,7 +423,7 @@ kubectl get pods --namespace helical-pdqueiros
 ```
 
 
-## Ray
+### Ray dashboard
 
 I've setup my Ray worker specs in `config/raycluster.yaml`; I've done so according to my local machine with 1 GPU (10GB nvidia RTX 3080) and 23 CPUs and 32GB RAM.
 
@@ -262,7 +434,7 @@ kubectl port-forward service/helical-raycluster-head-svc -n helical-pdqueiros 82
 ```
 Go to `http://127.0.0.1:8265/#/overview` to see the Ray dashboard.
 
-## Airflow with Terraform
+### Airflow with Terraform
 
 If you deployed Airflow via Terraform you need to create a tunnel between your system and minikube. The idea is the same as with Ray.
 
@@ -275,10 +447,7 @@ And then go to the port you specified or randomly assigned by minikube: `http://
 
 
 
-
-
-
-## Destroy deployment
+### Destroy deployment
 
 ```bash
 terraform destroy
@@ -296,271 +465,6 @@ kubectl delete pod apache-airflow-redis-0  --namespace helical-pdqueiros --force
 You can do the same with other problematic sticky pods, they'll be restarted anyhow.
 
 
-
-
-# Workflow
-
-## Sample data, and other info
-
-- Sample [data](https://huggingface.co/datasets/helical-ai/yolksac_human)
-- Sample [notebook](https://github.com/helicalAI/helical/blob/release/examples/notebooks/Cell-Type-Annotation.ipynb)
-
-## General workflow
-
-1. User adds data to S3 storage (via UI)
-2. When new data arrives, Airflow spawns a pod which then loads the model and processes the data
-3. Data is [split](#data-splitting)
-4. Data is [processed](#data-processing)
-5. Model is [fine-tuned](#model-fine-tuning) and logged into Mlflow
-
-During these steps you have metrics being logged to Prometheus as well, which you can visualize in Grafana.
-
-
-Below you can find the underlying logic for each step (3-5). These were first created as Jobs for development and then deployed as Airflow Docker operators.
-
-### Data splitting
-
-
-```python
-
-class SplitDataJob():
-    def run(self):
-        task = SplitData()
-        downloaded_files : list[str] = task.download_data_to_split()
-        if not downloaded_files:
-            return
-        chunked_files: list[str] = task.split_data()
-        uploaded_files = task.upload_chunked_files(list_files=chunked_files)
-        archived_files = task.archive_raw_data(list_files=downloaded_files)
-```
-
-### Data processing
-
-```python
-class ProcessDataJob():
-    def run(self):
-        task = ProcessData()
-        downloaded_files : list[str] = task.download_data_to_process()
-        if not downloaded_files:
-            return
-        processed_files: list[str] = task.process_data()
-        deleted_files: list[str] = task.delete_chunked_files(list_files=downloaded_files)
-        uploaded_files: list[str] = task.upload_processed_files(list_files=processed_files)
-```
-
-### Model fine-tuning
-
-```python
-
-```
-
-Note that in each step we have a sensor step `task.download_data_to_process()` which will trigger downstream steps
-
-
-
-
-## Data format
-
-
-
-After processing, the flag `is_processed` is set to True.
-
-Paths are equivalent in S3 and locally (but in locally, we store in the `tmp` folder)
-
-```
-/boxes/input/bounding_box_01976dbcbdb77dc4b9b61ba545503b77.jsonl
-/boxes/output/bounding_box_01976dbcbdb77dc4b9b61ba545503b77.jsonl
-fields/input/01976dbcbdb77dc4b9b61ba545503b77/fields_2025-06-02.jsonl
-fields/output/01976dbcbdb77dc4b9b61ba545503b77/fields_2025-06-02.jsonl
-```
-
-These data types are implemented as data classes `src/helical_pdqueiros/services/core/documents/bounding_box_document.py` and `src/helical_pdqueiros/services/core/documents/field_document.py`. 
-**Since we are not dong any real data transformations, I assume that fields are rectangular (similar to bounding boxes)**
-
-## Dependencies testing
-
-For dependencies testing you can remove some of the boxes/fields data from s3 and delete any past runs in the dagster UI. You can then upload the data files one by one and see how the dependencies are tracked in the sensors.
-
-
-### Note on late data arrival
-
-Regarding the complication describe above (i.e., adding fields data on different timepoints without reprocessing bounding boxes):
-- Upload file to the correct S3 folder, e.g., fields/input/01976dbcbdb77dc4b9b61ba545503b77/fields_2025-06-02_THIS_IS_A_RANDOM_STRING.jsonl
-- wait for sensor to check dependencies
-
-Check `sensors.py/fields_dependencies_are_available` in sensors.py for an overview of how this works.
-
-Keep in mind that we don't do any assets aggregation since this would depend on downstream business logic.
-
-
-
-# Local deployment
-
-The section below is mostly for development purposes; the only infra requirement we have is postgres, for that *make sure the postgres credentials match the ones found in the `dagster.yaml` file*
-
-## Initial setup
-
-1. Setup .env file
-
-```
-AWS_DEFAULT_REGION=
-S3_ACCESS_KEY=
-S3_SECRET_ACCESS_KEY=
-S3_BUCKET=
-```
-
-1. Export environmental variables:
-
-```bash
-source env.sh
-```
-
-
-1. Deploy postgres:
-
-```bash
-docker compose -f docker-compose-infra.yaml up -d
-```
-
-If you can't bind to postgres, e.g., you get this error:
-
-```bash
-Error response from daemon: driver failed programming external connectivity on endpoint proma-postgres-1 (a484fad4f83094cb257ff159fde87c1c3c1cb6bf7e9ebf6fc84ecbfd99b003ca): Error starting userland proxy: listen tcp4 127.0.0.1:5432: bind: address already in use
-```
-
-You can run:
-
-```bash
-# assuming the port for postgres is 5432
-sudo lsof -t -i:5432 | xargs sudo kill -9
-```
-
-
-2. Create S3 bucket if needed (same name as `S3_BUCKET`)
-
-3. [Install UV](https://docs.astral.sh/uv/getting-started/installation/) (**recommended**) and activate your environment with:
-*Keep in mind that the `activate.sh` command assumes you are using UV for enviorenment management, if you prefer use something else like venv, conda, mamba, etc*
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-source activate.sh
-```
-
-4. Create test data and upload it to S3:
-```bash
-python tests/create_sample_data.py
-```
-
-5. Launch dagster dev:
-
-```bash
-# check definitions:
-dg list defs
-# run:
-uv run --active dagster dev
-```
-
-6. Launch dagster-webserver:
-```bash
-dagster-webserver
-```
-
-
-
-# Deployment with minikube+helm
-
-This section was the second develoment step, i.e., putting together the infrastructure. I've kept things simple by using Dagster's default helm chart with only the essential changes so that we can run the public image of this codebase.
-
-## Tools installation
-
-1. Install [K8s](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
-2. Install [Helm](https://helm.sh/docs/intro/install/)
-3. Install [Terraform](https://developer.hashicorp.com/terraform/install)
-4. Install [minikube](https://minikube.sigs.k8s.io/docs/start/?arch=%2Flinux%2Fx86-64%2Fstable%2Fbinary+download). We are running minikube since we are deploying a k8s cluster locally.
-
-
-## Docker image and tools deployment
-
-1. Authenticate to Amazon ECR (this is the public registry I've set). This step is only needed if you need to modify the image.
-
-```bash
-aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
-# source code
-docker compose build
-docker tag helical-pdqueiros:latest public.ecr.aws/d8n7f1a1/helical_pdqueiros/helical_pdqueiros:latest
-docker push public.ecr.aws/d8n7f1a1/helical_pdqueiros:latest
-# airflow template code
-docker compose -f docker-compose-airflow.yaml build
-docker tag helical-pdqueiros-airflow:latest public.ecr.aws/d8n7f1a1/helical_pdqueiros_airflow:latest
-docker push public.ecr.aws/d8n7f1a1/helical_pdqueiros_airflow:latest
-```
-
-You should see an image here:
-https://eu-central-1.console.aws.amazon.com/ecr/repositories/public/996091555539/helical_pdqueiros?region=eu-central-1
-
-
-
-2. Start minikube with:
-```bash
-# we need this insecure registry to loag the image from localhost
-# see https://gist.github.com/trisberg/37c97b6cc53def9a3e38be6143786589
-minikube start
-# Check node status
-kubectl get nodes
-# you should get something like this: `minikube   Ready    control-plane   33s   v1.33.1`
-# set kubectl alias 
-alias kubectl="minikube kubectl --"
-kubectl config use-context minikube
-```
-
-2. Start minikube dashboard
-```bash
-minikube dashboard
-```
-
-
-*The output of the image list should match with the service_image variable in `dagster-chart.yaml`* (see below)
-
-
-
-```
-
-# if the namespace does not exist
-kubectl create namespace helical-pdqueiros
-# create the secret with the necessary env vars (if it doesnt exist)
-# make sure you always check the if you have the secret with 
-kubectl describe secret helical-pdqueiros-secret -n helical-pdqueiros
-# if you don't run the command below
-kubectl create secret generic helical-pdqueiros-secret --from-env-file=.env -n helical-pdqueiros
-
-# set minikube config 
-kubectl config use-context minikube
-# and check it
-kubectl config view
-kubectl config set-context minikube --namespace helical-pdqueiros --cluster minikube --user=helical-pdqueiros
-
-
-# get dagster chart
-helm repo add dagster https://dagster-io.github.io/helm
-helm repo update
-```
-
-
-
-
-Now let's try with fields data:
-![k8s_dashboard](images/fields_data.png)
-
-You can see the job has run
-![k8s_dashboard](images/fields_process_job_tags.png)
-
-
-Congratulations for making it to the end! If you want a simplified versionn go back to the [top](#tldr-ie-minikubeterraform) and have fun with your deployed service.
-
-
-# Future TODO
-
-- Logs should be cleaned up and conflicts resolved, right now the Helical logger captures logs not sent to it. I'd also add more information on logging information, e.g., what I used for log formatting.
-- Use different K8s namespaces, for now everything is in helical-pdqueiros for simplicity sake. But we could have one for airlfow, monitoring, ray, etc
 
 
 # Known issues
@@ -592,8 +496,17 @@ HTTPError: 400 Client Error: Bad Request for url: http://airflow-docker-socket:2
 ```
 A docker or system reboot will fix the issue.
 
+- `FileNotFoundError: [Errno 2] No such file or directory: '/home/pedroq/.cache/helical/models/geneformer/v1/gene_median_dictionary.pkl'` If you get this error, run these commands:
+```bash
+source env.sh
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/gene_median_dictionary.pkl
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/token_dictionary.pkl
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/ensembl_mapping_dict.pkl
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/${MODEL_NAME}/config.json
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/${MODEL_NAME}/training_args.bin
+```
 
-# Useful commands and info
+# Useful commands and other info
 
 These are some commands I've used during development; you don't necessarily need them, these are just some references for myself.
 
@@ -674,12 +587,23 @@ Helical todo:
     - dependency group for data processing
     - dependency group per model -> I imagine you also run into compability issues quite often
 - Improve file path management
-- There's some weird behaviour in the data downloading. I think it's likely a permission issue with the Docker proxy, but I'm not entirely sure.
+- There's some weird behaviour in the data downloading, both locally and within containers. This seems to work when you download the data using `wget` but I think the runtime downloading function is not working properly.
 ```bash
-^^^^^^^^^^^^^^^^^^^^^^ source=airflow.task.operators.airflow.providers.docker.operators.docker.DockerOperator loc=docker.py:66
-[2025-11-10 22:09:36] INFO -   File "/app/.venv/lib/python3.11/site-packages/helical/models/geneformer/geneformer_tokenizer.py", line 256, in __init__ source=airflow.task.operators.airflow.providers.docker.operators.docker.DockerOperator loc=docker.py:66
-[2025-11-10 22:09:36] INFO -     with open(gene_median_file, "rb") as f: source=airflow.task.operators.airflow.providers.docker.operators.docker.DockerOperator loc=docker.py:66
-[2025-11-10 22:09:36] INFO -          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source=airflow.task.operators.airflow.providers.docker.operators.docker.DockerOperator loc=docker.py:66
-[2025-11-10 22:09:36] INFO - FileNotFoundError: [Errno 2] No such file or directory: '/root/.cache/helical/models/geneformer/v1/gene_median_dictionary.pkl' source=airflow.task.operators.airflow.providers.docker.operators.docker.DockerOperator loc=docker.py:66
-[2025-11-10 22:09:38] ERROR - Task failed with exception source=task loc=task_runner.py:977
+Traceback (most recent call last):
+  File "/home/pedroq/envs/helical_pdqueiros/lib/python3.11/site-packages/decorator.py", line 235, in fun
+    return caller(func, *(extras + args), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pedroq/envs/helical_pdqueiros/lib/python3.11/site-packages/retry/api.py", line 73, in retry_decorator
+    return __retry_internal(partial(f, *args, **kwargs), exceptions, tries, delay, max_delay, backoff, jitter,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pedroq/envs/helical_pdqueiros/lib/python3.11/site-packages/retry/api.py", line 33, in __retry_internal
+    return f()
+           ^^^
+  File "/home/pedroq/personal/helical_pdqueiros/src/helical_pdqueiros/core/cell_type_annotation/data_processer.py", line 30, in __init__
+    self.tokenizer = TranscriptomeTokenizer(
+                     ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pedroq/envs/helical_pdqueiros/lib/python3.11/site-packages/helical/models/geneformer/geneformer_tokenizer.py", line 256, in __init__
+    with open(gene_median_file, "rb") as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/pedroq/.cache/helical/models/geneformer/v1/gene_median_dictionary.pkl'
 ```

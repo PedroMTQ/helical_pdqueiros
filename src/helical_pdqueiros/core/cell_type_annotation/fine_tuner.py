@@ -26,9 +26,6 @@ MLFLOW_EXPERIMENT_NAME = os.getenv('MLFLOW_EXPERIMENT_NAME', "Geneformer_CellTyp
 EPOCHS = int(os.getenv('EPOCHS', "2"))
 NUM_PROC = int(os.getenv('NUM_PROC', '3'))
 
-mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-tracking_uri = mlflow.get_tracking_uri()
-logger.info(f"Current Mlflow tracking uri: {tracking_uri}")
 
 
 # Example execution (uncomment to run)
@@ -55,7 +52,14 @@ class CellTypeAnnotationFineTuner():
         if not chunk_paths:
             return False
         try:
-            # --- MLFLOW SETUP ---
+            mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+            tracking_uri = mlflow.get_tracking_uri()
+            logger.info(f"Current Mlflow tracking uri: {tracking_uri} with experiment name: {MLFLOW_EXPERIMENT_NAME}")
+            # This shouldn't be necessary, but for some reason I'm getting mlflow.exceptions.RestException: RESOURCE_DOES_NOT_EXIST: No Experiment with id=1 exists if I don't initially create it. This should be handled by set_experiment automatically. Maybe it's a recent bug?
+            try:
+                mlflow.create_experiment(name=MLFLOW_EXPERIMENT_NAME)
+            except Exception:
+                pass
             mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
             geneformer_config = GeneformerConfig(model_name=MODEL_NAME, batch_size=TRAINING_BATCH_SIZE, device=CUDA_DEVICE)
             logger.info(f'GeneformerConfig: {geneformer_config.config}')

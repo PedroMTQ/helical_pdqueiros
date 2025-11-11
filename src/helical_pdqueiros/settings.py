@@ -23,10 +23,10 @@ DATE_FORMAT = os.getenv('DATE_FORMAT')
 
 MINIO_HOST = os.getenv('MINIO_HOST')
 MINIO_PORT = os.getenv('MINIO_PORT')
-S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY')
-S3_SECRET_ACCESS_KEY = os.getenv('S3_SECRET_ACCESS_KEY')
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 
-RETRY_LIMIT = int(os.getenv('RETRY_LIMIT', '100'))
+RETRY_LIMIT = int(os.getenv('RETRY_LIMIT', '2'))
 
 
 CUDA_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -60,7 +60,8 @@ for folder_path in [TEMP, LOCAL_DATA, MODELS, LOCAL_EXPERIMENT_DATA_PATH, LOCAL_
 
 H5AD_PATTERN = r'(.*\.h5ad)$'
 DATASET_PATTERN = r'(.*\.dataset\.tar)$'
-CHUNK_BATCH_SIZE = int(os.getenv('CHUNK_BATCH_SIZE', '1000'))
+CHUNK_BATCH_SIZE = int(os.getenv('CHUNK_BATCH_SIZE', '5'))
+PROCESSING_CHUNKS_LIMIT = int(os.getenv('PROCESSING_CHUNKS_LIMIT', '2'))
 TRAINING_BATCH_SIZE = int(os.getenv('TRAINING_BATCH_SIZE', '2'))
 DATASET_LABEL_NAME = 'label'
 LABEL_NAME = os.getenv('LABEL_NAME', 'LVL1')

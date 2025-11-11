@@ -135,7 +135,7 @@ The main tools here (i.e., that you actually might interact with) are : Airflow,
 Now that you are done deploying the services, you can now build the images for the containers that will be deployed by Airflow via Docker operators. There's 2 versions here, `helical-pdqueiros-cpu` is a small image that contains some CPU-only requirements, whereas `helical-pdqueiros-gpu` contains all the requirements for running the actual fine-tuning.
 
 ```bash
-docker compose -f docker-compose-build.yaml build helical-pdqueiros helical-pdqueiros-gpu
+docker compose -f docker-compose-build.yaml build helical-pdqueiros-cpu helical-pdqueiros-gpu
 ```
 
 This image contains all my source code as well as Helical's package (among a few other dependencies).

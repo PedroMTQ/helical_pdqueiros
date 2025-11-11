@@ -30,6 +30,7 @@ class FineTuneJob(BaseJob):
         uncompressed_files: list[str] = self.task.uncompress_data(list_files=downloaded_files)
         logger.info(f'Uncompressed training files: {uncompressed_files}')
         sleep(SLEEP_TIME)
+        # this will fine-tune and log the corresponding model into Mlflow (as an experiment, not as a registered model)
         fine_tuning_files: list[str] = self.task.fine_tune(list_files=uncompressed_files)
         logger.info(f'Fine-tuned with: {fine_tuning_files}')
         sleep(SLEEP_TIME)

@@ -16,6 +16,7 @@ from helical_pdqueiros.settings import (
     LOCAL_CHUNKED_DATA_PATH,
     LOCAL_PROCESSED_DATA_PATH,
     PROCESSED_DATA_PATH,
+    PROCESSING_CHUNKS_LIMIT,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ class ProcessData(BaseTask):
         super().__init__()
 
     def download_data_to_process(self) -> list[str]:
-        return self.download_data(s3_input_folder=CHUNKED_DATA_PATH, local_output_folder=LOCAL_CHUNKED_DATA_PATH)
+        return self.download_data(s3_input_folder=CHUNKED_DATA_PATH, local_output_folder=LOCAL_CHUNKED_DATA_PATH, limit=PROCESSING_CHUNKS_LIMIT or None)
 
 
     def process_data(self, distributed: bool=False) -> list[str]:
@@ -59,6 +60,15 @@ class ProcessData(BaseTask):
             logger.debug('Processsing data iteratively')
             return self.process_data_with_base_python()
 
+    @staticmethod
+    def compress_file(file_path: str) -> str:
+        path_object = Path(file_path)
+        compressed_file = shutil.make_archive(file_path, format='tar', root_dir=path_object.parent, base_dir=path_object.name)
+        logger.debug(f"Compressed file_path to {compressed_file}")
+        shutil.rmtree(file_path)
+        return compressed_file
+
+
     def process_data_with_base_python(self) -> list[str]:
         res = []
         data_processor = CellTypeAnnotationDataProcessor()
@@ -68,8 +78,8 @@ class ProcessData(BaseTask):
             logger.debug(f'Processing data in {local_file_path}')
             try:
                 data_document = DataDocument(file_path=local_file_path)
-                compressed_output_path = data_processor.process_data(data_document=data_document, output_path=output_path)
-                shutil.rmtree(output_path)
+                output_path = data_processor.process_data(data_document=data_document, output_path=output_path)
+                compressed_output_path = ProcessData.compress_file(file_path=output_path)
                 res.append(compressed_output_path)
             except Exception as e:
                 s3_file_path = os.path.join(CHUNKED_DATA_PATH, file_name)

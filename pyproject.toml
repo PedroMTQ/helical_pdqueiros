@@ -3,19 +3,20 @@ name = "helical_pdqueiros"
 version = "0.0.1"
 description = "Pod template for deploying Helical"
 authors = [{ name = "Pedro Queiros", email = "coding.paradox013@passmail.net" }]
-requires-python = "~=3.11"
+requires-python = ">=3.11"
 readme = "README.md"
 maintainers = [{ name = "Pedro Queiros", email = "coding.paradox013@passmail.net" }]
 dependencies = [
     "retry",
     "ruff",
+    "python-dotenv",
     "uuid6",
     "boto3",
     "helical",
-    "mlflow",
+    "mlflow==3.5",
     "anndata",
     "h5py",
-    "ray[data]",
+    "ray[client,data,train,tune]==2.50.1",
     # "anndata @ git+https://github.com/helicalAI/anndata",
 ]
 
@@ -30,8 +31,8 @@ directory_type = "project"
 root_module = "helical_pdqueiros"
 autoload_defs = true
 
-# [tool.hatch.metadata]
-# allow-direct-references = true
+[project.scripts]
+helical_pdqueiros = "helical_pdqueiros.__main__:main"
 
 [project.urls]
 Repository = "https://github.com/PedroMTQ/helical_pdqueiros.git"

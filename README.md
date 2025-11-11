@@ -1,177 +1,33 @@
 # helical-pdqueiros
 
-# NOTES
-
-Im using ./helical/examples/run_models/run_geneformer.py as a template
-Some references:
-
-- for community edition airflow deployment (not being used): https://github.com/airflow-helm/charts
-
-# Useful commands:
-
-- Inspecting minikube:
-```bahs
-minikube ssh
-```
-- Get all pods:
-```bash
-kubectl get pods -n helical-pdqueiros 
-```
-- Inspecting a pod:
-```bash
-kubectl exec -it <pod-name> -n helical-pdqueiros -- /bin/bash
-```
-- Describing a pod: 
-```bash
-kubectl describe pod <pod-name> -n helical-pdqueiros
-```
-- Deleting a pod: 
-```bash
-kubectl delete pod <pod-name> -n helical-pdqueiros
-```
-- Restarting a pod:
-```bash
-kubectl rollout restart deployment <pod-name> -n helical-pdqueiros
-```
-- get chart default values, e.g., for airflow:
-```bash
-helm show values apache-airflow/airflow > default-values.yaml
-```
-You can use this to cross-reference against specific config/*.yaml
-
-#####
+# TODO
 
 
 
+- [x] Setup Airflow (terraform):
+    - [x] minimum setup with python operators
+    - [x] setup with kubernetes pods
+    - [x] setup with Ray work distribution
+- [x] Setup Minio for data storage (terraform)
+- [] Setup Ray for distributed computing (terraform)
+- [x] Setup Mlflow for model versioning (terraform)
+- [x] Setup Prometheus+Grafana for monitoring (terraform)
+- [] Build training pipeline: 
+    - [x] DAG with sensor for downloading h5ad (task), splitting data into chunks (task) and uploading unprocessed h5ad chunks to S3 (task)
+    - [x] DAG with sensor for download h5ad chunks (task), processing h5ad chunks (task), and uploading processed h5ad chunks to s3 (task)
+    - [x] read processed h5ad chunks, training model from streamed chunks, and logging into Mlflow (task)
+    - [x] publish image with src code for all tasks
+    - [] add Ray distributed work execution
+- [x] define hardware with Ray
+- [x] define model-specific parameters, e.g., precision
+- [x] create grafana dashboards:
+    - [x] cadvisor for resources profiling
+    - [x] dag duration
+    - [] dag counts
 
 
 
-
-
-
-
-
-
-
-Tools used
-- Amazon's [S3](https://eu-central-1.console.aws.amazon.com/s3) and Amazon's [ECR](https://eu-central-1.console.aws.amazon.com/ecr)
-- Dagster for orchestration
-- K8s for pod deployment and auto-scaling of dagster as pods (one pod per asset)
-- Terraform for infrastructure creation
-
-# TLDR, i.e., minikube+terraform
-
-## Setup
-1. Install [K8s](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
-2. Install [Terraform](https://developer.hashicorp.com/terraform/install)
-3. Install [minikube](https://minikube.sigs.k8s.io/docs/start/?arch=%2Flinux%2Fx86-64%2Fstable%2Fbinary+download). We are running minikube since we are deploying a k8s cluster locally.
-4. **Create .env file with these values:**
-
-```
-# credentials
-AWS_DEFAULT_REGION=
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-S3_BUCKET=
-```
-I've included a `.env-template` you can just rename to `.env` and add yhour AWS credentials.
-**After** this is done you can deploy:
-5. Login to ECR so you can pull the latest image:
-```bash
-# if you haven't set the AWS credentials in your .bashrc file, you need to export them with:
-source env.sh
-# and then just login:
-aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
-```
-
-
-## Deployment
-
-
-```bash
-# I'm mounting my workspace to minikube so that I can mount the dags into my airflow pods. In a prod env you'd pull the dags from git instead. Make sure you use the mount and driver since we need them for sharing the Airflow DAGs
-minikube start --mount --mount-string="/home/pedroq/workspace:/host_workspace" --driver=docker
-# then start terraforming...
-terraform init
-# we do this due to a known issue with the CRD installation planning. So we force deployment first since other pods depend on it.
-terraform apply -target=helm_release.kuberay_operator
-terraform plan
-terraform apply
-```
-
-If you want to update the chart versions just check the repos you have with `helm repo list` and check the respective repo, e.g., `helm search repo grafana`
-
-To check pods status:
-```bash
-kubectl get pods --namespace helical-pdqueiros
-```
-
-
-### Dashboards
-
-#### Minikube
-
-```
-# in another console you can check the dashboard with:
-minikube dashboard --port=8081
-```
-You can then open the provided link, e.g.,: `http://127.0.0.1:8081/api/v1/namespaces/kubernetes-dashboard/services/http:kubernetes-dashboard:/proxy/#/workloads?namespace=helical-pdqueiros`
-
-**If you are checking the minikube dashboard, make sure you use the correct namespace, i.e., "helical-pdqueiros"**
-
-Generally it will take some time for terraform to finish since it waits until all deployments are done
-
-You can check all the pods via the console with: 
-```
-kubectl get pods --namespace helical-pdqueiros
-```
-
-#### Airflow
-
-Create a tunnel via minikube to inspect the Airflow dashboard:
-```
-minikube service apache-airflow-api-server -n helical-pdqueiros
-# or if you want to use a specific port:
-kubectl port-forward service/apache-airflow-api-server -n helical-pdqueiros 8000:8080 
-```
-
-And then go to the port you specified or randomly assigned by minikube: `http://127.0.0.1:8000/`
-I'm using the default user and password: admin and admin
-
-### Ray
-
-I've setup my Ray worker specs in `config/raycluster.yaml`; I've done so according to my local machine with 1 GPU (10GB nvidia RTX 3080) and 23 CPUs and 32GB RAM.
-
-Create a tunnel via minikube to inspect the Ray dashboard:
-```
-kubectl port-forward service/helical-raycluster-head-svc -n helical-pdqueiros 8265:8265 
-```
-Go to `http://127.0.0.1:8265/#/overview` to see the Ray dashboard.
-
-
-## Destroy deployment
-
-```bash
-terraform destroy
-# or for full deletion:
-kubectl delete all --all -n helical-pdqueiros --force
-kubectl delete namespace helical-pdqueiros --force
-kubectl delete pv local-dags-pv --force
-```
-
-Redis tends to hang while shutting down. You can skip things up with:
-```bash
-kubectl delete pod apache-airflow-redis-0  --namespace helical-pdqueiros --force
-```
-
-You can do the same with other problematic sticky pods, they'll be restarted anyhow.
-
-
-
-
-# Description
-
-## Task description
+# Task description
 
 Objective: Build a containerized workflow orchestration environment that launches and monitors Helical model executions using Dockerized Airflow.
 
@@ -216,251 +72,331 @@ To handle larger models and datasets efficiently, consider:
 
 
 
+I'm using this example from Helical as [template](./helical/examples/run_models/run_geneformer.py) for the workflow in this repo.
+
+
+
+# Setup
+
+You need to have these installed on your machine:
+- Install [Docker](https://docs.docker.com/engine/install/)
+- Install [cuda](https://docs.nvidia.com/cuda/wsl-user-guide/index.html#cuda-support-for-wsl-2)
+
+These are optional, and you only need them if you want to use Ray for distributed computing:
+- Install [Helm](https://helm.sh/docs/intro/install/)
+- Install [K8s](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
+- Install [Terraform](https://developer.hashicorp.com/terraform/install)
+- Install [minikube](https://minikube.sigs.k8s.io/docs/start/?arch=%2Flinux%2Fx86-64%2Fstable%2Fbinary+download)
+
+
+## Docker deployment
+
+```bash
+# deploys mlflow and minio (for mlflow and "cloud" storage)
+# recipe: https://github.com/mlflow/mlflow/tree/master/docker-compose
+# builds our custom airflow image
+docker compose -f docker-compose-build.yaml build helical-pdqueiros-airflow
+# deploys the services
+docker compose -f docker-compose-storage.yaml up -d
+docker compose -f docker-compose-monitoring.yaml up -d
+docker compose -f docker-compose-airflow.yaml up -d
+```
+
+This will deploy all basic services with docker, including:
+- minio for S3 simulation and Mlflow storage
+- postgres for Mlflow and Airflow. Note that I used the base docker compose file from [Airflow](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html); you could also deploy Airflow via [Terraform](https://github.com/airflow-helm/charts). To avoid exposing the docker.sock I'm also deploying a proxy (docker-socket-proxy) as explained [here](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/tree/master) and [here](https://medium.com/@benjcabalonajr_56579/using-docker-operator-on-airflow-running-inside-a-docker-container-7df5286daaa5).
+- Prometheus, Pushgateway, Cadvisor, Redis, Grafana, node-exporter, and otel-collector for monitoring. Otel-collector is used for Airflow monitoring, whereas the others are used for system and containers monitoring.
+
+Make sure you have all these containers:
+```bash
+IMAGE                                              NAMES                                       STATUS
+helical-pdqueiros-airflow:latest                   helical_pdqueiros-airflow-worker-1          Up 4 minutes (healthy)
+helical-pdqueiros-airflow:latest                   helical_pdqueiros-airflow-apiserver-1       Up 4 minutes (healthy)
+helical-pdqueiros-airflow:latest                   helical_pdqueiros-airflow-dag-processor-1   Up 4 minutes (healthy)
+helical-pdqueiros-airflow:latest                   helical_pdqueiros-airflow-triggerer-1       Up 4 minutes (healthy)
+helical-pdqueiros-airflow:latest                   helical_pdqueiros-airflow-scheduler-1       Up 4 minutes (healthy)
+postgres:16                                        postgres-airflow                            Up 5 minutes (healthy)
+redis:7.2-bookworm                                 redis-airflow                               Up 5 minutes (healthy)
+tecnativa/docker-socket-proxy:v0.4.1               airflow-docker-socket                       Up 5 minutes
+grafana/grafana-oss                                monitoring-grafana                          Up 5 minutes
+prom/prometheus:latest                             monitoring-prometheus                       Up 5 minutes
+gcr.io/cadvisor/cadvisor:latest                    monitoring-cadvisor                         Up 5 minutes (healthy)
+otel/opentelemetry-collector-contrib               monitoring-otel-collector                   Up 5 minutes
+quay.io/prometheus/node-exporter:latest            monitoring-node-exporter                    Up 5 minutes
+prom/pushgateway                                   monitoring-pushgateway                      Up 5 minutes
+redis:latest                                       redis-monitoring                            Up 5 minutes
+ghcr.io/mlflow/mlflow:latest                       storage-mlflow-server                       Up 5 minutes (healthy)
+postgres:16.4-bullseye                             postgres-mlflow                             Up 5 minutes (healthy)
+quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z   storage-minio                               Up 5 minutes (healthy)
+```
+
+The main tools here (i.e., that you actually might interact with) are : Airflow, Grafana, Mlflow, and Minio. All others are containers that are "supporting" these tools.
+
+Now that you are done deploying the services, you can now build the images for the containers that will be deployed by Airflow via Docker operators. There's 2 versions here, `helical-pdqueiros-cpu` is a small image that contains some CPU-only requirements, whereas `helical-pdqueiros-gpu` contains all the requirements for running the actual fine-tuning.
+
+```bash
+docker compose -f docker-compose-build.yaml build helical-pdqueiros helical-pdqueiros-gpu
+```
+
+This image contains all my source code as well as Helical's package (among a few other dependencies).
+
+Assuming everything was deployed correctly, you should now have access to all the necessary services and you can check their respective dashboards at:
+
+- [Minio](http://localhost:9001) (credentials: minio/minio123)
+- [Mlflow](http://localhost:5000)
+- [Grafana](http://localhost:3000/login) (credentials: admin/admin)
+- [Airflow](http://localhost:8080/) (credentials: airflow/airflow)
+- [Prometheus](http://localhost:9090/)
+
+
+When you access the [Minio](http://localhost:9001) dashboard, you should see 2 buckets: `helical` and `mlflow`; the `helical` bucket is where you will load your test data, which I've included in `tests/test_data.h5ad`.
+
+In [Airflow](http://localhost:8080/) you will see these DAGs:
+
+![airflow-dags](./images/airflow-dags.png)
+
+
+If you open [Grafana](http://localhost:3000/login) you will have multiple dashboards, this one among them where you can track system resources and Airflow runs. 
+# TODO add image
+
+
 
 
 # Workflow
 
-## Sample data, and other info
+## Sample data and template workflow
 
 - Sample [data](https://huggingface.co/datasets/helical-ai/yolksac_human)
 - Sample [notebook](https://github.com/helicalAI/helical/blob/release/examples/notebooks/Cell-Type-Annotation.ipynb)
-- [Airflow helm chart](https://github.com/airflow-helm/charts)
 
 ## General workflow
 
-1. User adds data to S3 storage (via UI), but right now we do it manually through the AWS interface
-2. When new data arrives, Airflow spawns a pod which then loads the model and processes the data
-3. Processed data is stored
-4. Metrics are exposed to Prometheus
-5. Metrics are visualized in Grafana
+1. User adds data to S3 storage (via UI)
+2. When new data arrives, a Dag is triggered (as a POC I didn't include a schedule interval)
+3. Data is [split](#data-splitting)
+4. Data is [processed](#data-processing)
+5. Model is [fine-tuned](#model-fine-tuning) and logged into Mlflow
 
 
-![dagster_workflow](images/dagster_workflow.png)
+Below you can find the underlying logic for each step (3-5). These were first created as Jobs for development and then deployed as Airflow Docker operators.
+
+### Data splitting
+
 
 ```python
-defs = Definitions(
-    assets=[asset_bounding_box, asset_fields],
-    jobs=[job_process_fields, job_process_bounding_boxes],
-    sensors=[sensor_fields, sensor_bounding_boxes],
-    resources={
-        "s3_resource": s3_resource,
-        "io_manager_fields": io_manager_fields,
-        "io_manager_bounding_box": io_manager_bounding_box,
-    },
-)
-```
 
-![dagster_workflow](images/dagster.drawio.png)
-
-
-
-The sensor for the fields has a few dependencies, as per the requirements:
-
-- bounding box needs to be processed (currently by box id)
-- previous field data is processed
-- field date falls within partition start date
-
-The bounding box processing has no dependencies.
-
-
-
-
-## Data format
-
-Data is in jsonl format, both fields and bounding boxes have the same type of data, we just process them internally in a different manner.
-Bounding box:
-```
-{"box_id": "01976dbcbdb77dc4b9b61ba545503b77", "coordinates_x_min": 97, "coordinates_y_min": 28, "coordinates_x_max": 112, "coordinates_y_max": 42, "irrigation_array": [[1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1], [1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1], [1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0], [0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0], [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1], [1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1], [1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1], [0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1], [0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1], [1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1], [1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1], [1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1], [1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0], [0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0]], "is_processed": false}
-```
-
-Fields:
-```
-{"box_id": "01976dbcbdba78e1ba120a45b75e45da", "coordinates_x_min": 10, "coordinates_y_min": 6, "coordinates_x_max": 16, "coordinates_y_max": 8, "irrigation_array": [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]], "is_processed": false}
-{"box_id": "01976dbcbdb77dc4b9b61ba545503b77", "coordinates_x_min": 7, "coordinates_y_min": 4, "coordinates_x_max": 9, "coordinates_y_max": 6, "irrigation_array": [[0.0, 0.0], [0.0, 0.0]], "is_processed": false}
-```
-
-After processing, the flag `is_processed` is set to True.
-
-Paths are equivalent in S3 and locally (but in locally, we store in the `tmp` folder)
+class SplitDataJob():
+    def _run(self):
+        downloaded_files : list[str] = self.task.download_data_to_split()
+        if not downloaded_files:
+            return
+        chunked_files : list[str] = self.task.split_data()
+        uploaded_files : list[str] = self.task.upload_chunked_files(list_files=chunked_files)
+        archived_files: list[str] = self.task.archive_raw_data(list_files=downloaded_files)
 
 ```
-/boxes/input/bounding_box_01976dbcbdb77dc4b9b61ba545503b77.jsonl
-/boxes/output/bounding_box_01976dbcbdb77dc4b9b61ba545503b77.jsonl
-fields/input/01976dbcbdb77dc4b9b61ba545503b77/fields_2025-06-02.jsonl
-fields/output/01976dbcbdb77dc4b9b61ba545503b77/fields_2025-06-02.jsonl
+
+### Data processing
+
+```python
+class ProcessDataJob():
+    def run(self):
+        downloaded_files : list[str] = self.task.download_data_to_process()
+        if not downloaded_files:
+            return
+        processed_files: list[str] = self.task.process_data()
+        deleted_files: list[str] = self.task.delete_chunked_files(list_files=downloaded_files)
+        uploaded_files: list[str] = self.task.upload_processed_files(list_files=processed_files)
 ```
 
-These data types are implemented as data classes `src/helical_pdqueiros/services/core/documents/bounding_box_document.py` and `src/helical_pdqueiros/services/core/documents/field_document.py`. 
-**Since we are not dong any real data transformations, I assume that fields are rectangular (similar to bounding boxes)**
+### Model fine-tuning
 
-## Dependencies testing
-
-For dependencies testing you can remove some of the boxes/fields data from s3 and delete any past runs in the dagster UI. You can then upload the data files one by one and see how the dependencies are tracked in the sensors.
-
-
-### Note on late data arrival
-
-Regarding the complication describe above (i.e., adding fields data on different timepoints without reprocessing bounding boxes):
-- Upload file to the correct S3 folder, e.g., fields/input/01976dbcbdb77dc4b9b61ba545503b77/fields_2025-06-02_THIS_IS_A_RANDOM_STRING.jsonl
-- wait for sensor to check dependencies
-
-Check `sensors.py/fields_dependencies_are_available` in sensors.py for an overview of how this works.
-
-Keep in mind that we don't do any assets aggregation since this would depend on downstream business logic.
-
-
-
-# Local deployment
-
-The section below is mostly for development purposes; the only infra requirement we have is postgres, for that *make sure the postgres credentials match the ones found in the `dagster.yaml` file*
-
-## Initial setup
-
-1. Setup .env file
-
-```
-AWS_DEFAULT_REGION=
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-S3_BUCKET=
+```python
+class FineTuneJob():
+    def _run(self):
+        downloaded_files : list[str] = self.task.download_data_to_fine_tune()
+        if not downloaded_files:
+            return
+        uncompressed_files: list[str] = self.task.uncompress_data(list_files=downloaded_files)
+        fine_tuning_files: list[str] = self.task.fine_tune(list_files=uncompressed_files)
+        archived_files: list[str] = self.task.archive_processed_data()
 ```
 
-1. Export environmental variables:
 
+
+
+## Local testing
+
+You can test your DAGs locally without Airflow by running each job outside of Airflow, since in essence Airflow is merely providing scheduling and observability and all the business logic is within the `src` code.
+Keep in mind that I'm using [UV](https://docs.astral.sh/uv/getting-started/installation/) for environment management, which you can install with:
 ```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+After you install UV, you can run the following commands:
+```bash
+# creates the uv environment
+source activate.sh
+# sets up the environmental variables
 source env.sh
 ```
 
-
-1. Deploy postgres:
-
+After you run this, you should be able to run:
 ```bash
-docker compose -f docker-compose-infra.yaml up -d
+helical_pdqueiros -h
 ```
 
-If you can't bind to postgres, e.g., you get this error:
+Now, load some data into the `helical` bucket in [Minio](http://localhost:9001). I've included some sample data in `tests/`. Just drag and drop the whole `training_data` folder into [Minio](http://localhost:9001), like so:
+![minio-sample-data-1](./images/minio-sample-data-1.png)
 
+You can then see the sample data in this path:
+
+![minio-sample-data-2](./images/minio-sample-data-2.png)
+
+**Keep in mind that the name of the file is irrelevant (i.e., `sample_dataset`), HOWEVER the path (i.e., `helical/training_data/cell_type_classification/raw_data`) and extension `.h5ad`) of the files need to be respected!**
+
+Then run these commands to download all the necessary data. This is a fix to an issue within Helical's runtime download, which I assume will be resolved in the future.
 ```bash
-Error response from daemon: driver failed programming external connectivity on endpoint proma-postgres-1 (a484fad4f83094cb257ff159fde87c1c3c1cb6bf7e9ebf6fc84ecbfd99b003ca): Error starting userland proxy: listen tcp4 127.0.0.1:5432: bind: address already in use
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/gene_median_dictionary.pkl
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/token_dictionary.pkl
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/ensembl_mapping_dict.pkl
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/${MODEL_NAME}/config.json
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/${MODEL_NAME}/training_args.bin
 ```
 
-You can run:
+Afterwards, run the workflow in this order:
+```bash
+helical_pdqueiros split_data
+```
+After you run this, you will see 2 new folders within Minio `minio:helical/training_data/cell_type_classification/archived_raw_data` and `minio:helical/training_data/cell_type_classification/chunked_data`. The former contains your initial raw data, which is archived in case the pipeline needs to be run again, the latter contains the chunks of the initial data, which have been split to allow for distributed processing of the data.
 
 ```bash
-# assuming the port for postgres is 5432
-sudo lsof -t -i:5432 | xargs sudo kill -9
+helical_pdqueiros process_data
 ```
-
-
-2. Create S3 bucket if needed (same name as `S3_BUCKET`)
-
-3. [Install UV](https://docs.astral.sh/uv/getting-started/installation/) (**recommended**) and activate your environment with:
-*Keep in mind that the `activate.sh` command assumes you are using UV for enviorenment management, if you prefer use something else like venv, conda, mamba, etc*
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-source activate.sh
-```
-
-4. Create test data and upload it to S3:
-```bash
-python tests/create_sample_data.py
-```
-
-5. Launch dagster dev:
+Now you can run the data processing, which will pick up a certain amount of chunks (i.e., `PROCESSING_CHUNKS_LIMIT`, 2 by default), process them and store them into `minio:helical/training_data/cell_type_classification/processed_data`. The idea of having a `PROCESSING_CHUNKS_LIMIT` variable is to allow for distributed computing, i.e., each DAG run picks up a certain number of chunks, and processes them in a distributed manner.
+Note that each chunk is compressed after the data is processed to reduce disk storage overhead.
 
 ```bash
-# check definitions:
-dg list defs
-# run:
-uv run --active dagster dev
+helical_pdqueiros fine_tune
 ```
+Now, the final step is the model fine-tuning. I'm using `gf-6L-10M-i2048` as the default since it's one of the smaller models.
+This pipeline will take all the recently processed data in `minio:helical/training_data/cell_type_classification/processed_data` and fine tune the `gf-6L-10M-i2048` model. This data will then be archived in `minio:helical/training_data/cell_type_classification/archived_processed_data` since I assume that it could be re-used for future runs of this pipeline. The idea here being that the downstream user adds new data, processes it, and then wants to use all of their (both new and archived) to fine-tune the initial model.
 
-6. Launch dagster-webserver:
+*You should see this message `'gf-6L-10M-i2048' model is in 'eval' mode, on device 'cuda' with embedding mode 'cell'.` when running this pipeline; if you are not running GPU fine-tuning this pipeline will take quite a while.*
+
+You will also find the model logged into Mlflow, as shown below:
+
+![mlflow-model](./images/mlflow-model-1.png)
+![mlflow-model](./images/mlflow-model-2.png)
+
+Note that I'm logging the model (for experiment purposes) but not registering it, as you would do for serving the model. You could register it with :
 ```bash
-dagster-webserver
+model_uri = f"runs:/{run.info.run_id}/sklearn-model"
+mv = mlflow.register_model(model_uri, "RandomForestRegressionModel")
 ```
 
+And that's the end of the pipeline. Later on the end-user could download the model from Mlflow and use it for classifying their data.
 
 
-# Deployment with minikube+helm
 
-This section was the second develoment step, i.e., putting together the infrastructure. I've kept things simple by using Dagster's default helm chart with only the essential changes so that we can run the public image of this codebase.
+### Airflow testing
 
-## Tools installation
-
-1. Install [K8s](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
-2. Install [Helm](https://helm.sh/docs/intro/install/)
-3. Install [Terraform](https://developer.hashicorp.com/terraform/install)
-4. Install [minikube](https://minikube.sigs.k8s.io/docs/start/?arch=%2Flinux%2Fx86-64%2Fstable%2Fbinary+download). We are running minikube since we are deploying a k8s cluster locally.
+Now you can try the same in Airflow
 
 
-## Docker image and tools deployment
 
-1. Authenticate to Amazon ECR (this is the public registry I've set). This step is only needed if you need to modify the image.
 
+## Ray and K8s deployment
+
+
+Now, let's move on to the deployment of Ray, which as a POC, was done through Terraform. I have some other terraform deployments in `terraform`, but for the purpose of this exercise, I've only finalized Ray's terraform file `kuberay.tf`. The former terraform files *should* work but haven't been fully tested. For the airflow.tf you are probably better off using the community [charts](https://github.com/airflow-helm/charts).
+
+Anyhow, moving on to the Ray's deployment.
+
+```bash
+# starts kubernetes
+minikube start
+```
+
+You then need to build the images that the Ray workers will use. We will only build the image for the ray-cpu as this is the only pipeline where Ray was integrated; the same could be done (and should) for distributed model training.
+
+```bash
+eval $(minikube -p minikube docker-env)
+# now build:
+docker compose -f docker-compose-build.yaml build helical-pdqueiros-ray-cpu
+# Check that the images are available with:
+minikube image ls
+```
+
+These images are quite large so it might take a while. Ideally you would publish these images to something like ECR or another docker image registry.
+
+If you have access to ECR you can this like so:
 ```bash
 aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
 # source code
 docker compose build
+# for example:
 docker tag helical-pdqueiros:latest public.ecr.aws/d8n7f1a1/helical_pdqueiros/helical_pdqueiros:latest
 docker push public.ecr.aws/d8n7f1a1/helical_pdqueiros:latest
-# airflow template code
-docker compose -f docker-compose-airflow.yaml build
-docker tag helical-pdqueiros-airflow:latest public.ecr.aws/d8n7f1a1/helical_pdqueiros_airflow:latest
-docker push public.ecr.aws/d8n7f1a1/helical_pdqueiros_airflow:latest
 ```
 
-You should see an image here:
-https://eu-central-1.console.aws.amazon.com/ecr/repositories/public/996091555539/helical_pdqueiros?region=eu-central-1
+Keep in mind that [Amazon's](https://eu-central-1.console.aws.amazon.com/s3) [ECR](https://eu-central-1.console.aws.amazon.com/ecr) is not free, although you do some have free storage (at the time of writing it is 50GB). For prototyping purposes you are better off just building the images straight into Minikube, developing and publishing later on.
 
-2. Start minikube with:
+
+If minikube starts and the images are available, you are all set to start using Ray!
+
+You can then start Kuberay with:
+
 ```bash
-# we need this insecure registry to loag the image from localhost
-# see https://gist.github.com/trisberg/37c97b6cc53def9a3e38be6143786589
-minikube start
-# Check node status
-kubectl get nodes
-# you should get something like this: `minikube   Ready    control-plane   33s   v1.33.1`
-# set kubectl alias 
-alias kubectl="minikube kubectl --"
-kubectl config use-context minikube
+# terraform ray deployment
+terraform apply
+# tunnel for Ray
+kubectl port-forward service/helical-raycluster-head-svc -n helical-pdqueiros 8265:8265 10001:10001
 ```
 
-2. Start minikube dashboard
+This will deploy multiple pods, including 1 worker as defined in `helical_pdqueiros/config/raycluster.yaml`. You can customize this file according to your system.
+Notice that in `helical_pdqueiros/config/raycluster.yaml` we are using the images we built in the step above in each worker, the `*-cpu` image for the head and CPU workers, and the `*-gpu` image for the GPU worker.
+
+
+If you get this error when running `terraform apply`:
 ```bash
-minikube dashboard
+
+│ Error: API did not recognize GroupVersionKind from manifest (CRD may not be installed)
+│ 
+│   with kubernetes_manifest.raycluster,
+│   on kuberay.tf line 81, in resource "kubernetes_manifest" "raycluster":
+│   81: resource "kubernetes_manifest" "raycluster" {
+│ 
+│ no matches for kind "RayCluster" in group "ray.io"
 ```
-
-
-*The output of the image list should match with the service_image variable in `dagster-chart.yaml`* (see below)
-
-
-
-```
-
-# if the namespace does not exist
-kubectl create namespace helical-pdqueiros
-# create the secret with the necessary env vars (if it doesnt exist)
-# make sure you always check the if you have the secret with 
-kubectl describe secret helical-pdqueiros-secret -n helical-pdqueiros
-# if you don't run the command below
-kubectl create secret generic helical-pdqueiros-secret --from-env-file=.env -n helical-pdqueiros
-
-# set minikube config 
-kubectl config use-context minikube
-# and check it
-kubectl config view
-kubectl config set-context minikube --namespace helical-pdqueiros --cluster minikube --user=helical-pdqueiros
-
-
-# get dagster chart
-helm repo add dagster https://dagster-io.github.io/helm
-helm repo update
-```
-
-4. Add env variables as a K8s secret:
+Run this first:
 ```bash
-kubectl create secret generic helical-pdqueiros-secret --from-env-file=.env -n helical-pdqueiros
+terraform apply -target=helm_release.kuberay_operator
+```
+
+And then you can run everything else as usual, i.e., `terraform apply`.
+
+Make sure you all the pods running:
+```bash
+NAME                                               READY   STATUS    RESTARTS   AGE
+helical-raycluster-cpu-worker-group-worker-kd8cp   1/1     Running   0          29s
+helical-raycluster-head-gsjnx                      1/1     Running   0          69s
+kuberay-apiserver-c6bc7f7c4-824ps                  2/2     Running   0          11m
+kuberay-operator-6c8f855d77-8ghhz                  1/1     Running   0          12m
+
+```
+
+
+##\ Shutting down and deleting everything
+
+Shutting everything down
+
+```bash
+terraform destroy
+minikube stop
+docker compose -f docker-compose-storage.yaml down
+docker compose -f docker-compose-monitoring.yaml down
+docker compose -f docker-compose-airflow.yaml down
 ```
 
 
@@ -469,25 +405,71 @@ kubectl create secret generic helical-pdqueiros-secret --from-env-file=.env -n h
 
 
 
-Now let's try with fields data:
-![k8s_dashboard](images/fields_data.png)
+### Minikube dashboard
 
-You can see the job has run
-![k8s_dashboard](images/fields_process_job_tags.png)
+```
+# in another console you can check the dashboard with:
+minikube dashboard --port=8081
+```
+You can then open the provided link, e.g.,: `http://127.0.0.1:8081/api/v1/namespaces/kubernetes-dashboard/services/http:kubernetes-dashboard:/proxy/#/workloads?namespace=helical-pdqueiros`
+
+**If you are checking the minikube dashboard, make sure you use the correct namespace, i.e., "helical-pdqueiros"**
+
+Generally it will take some time for terraform to finish since it waits until all deployments are done
+
+You can check all the pods via the console with: 
+```
+kubectl get pods --namespace helical-pdqueiros
+```
 
 
-Congratulations for making it to the end! If you want a simplified versionn go back to the [top](#tldr-ie-minikubeterraform) and have fun with your deployed service.
+### Ray dashboard
+
+I've setup my Ray worker specs in `config/raycluster.yaml`; I've done so according to my local machine with 1 GPU (10GB nvidia RTX 3080) and 23 CPUs and 32GB RAM.
+
+Create a tunnel via minikube to inspect the Ray dashboard:
+```bash
+# 8265 for the dashboard, 10001 for the ray cluster
+kubectl port-forward service/helical-raycluster-head-svc -n helical-pdqueiros 8265:8265 10001:10001
+```
+Go to `http://127.0.0.1:8265/#/overview` to see the Ray dashboard.
+
+### Airflow with Terraform
+
+If you deployed Airflow via Terraform you need to create a tunnel between your system and minikube. The idea is the same as with Ray.
+
+Create a tunnel via minikube to inspect the Airflow dashboard:
+```bash
+kubectl port-forward service/apache-airflow-api-server -n helical-pdqueiros 8000:8080 
+```
+
+And then go to the port you specified or randomly assigned by minikube: `http://127.0.0.1:8000/`
 
 
-# Future TODO
 
-- Logs should be cleaned up and conflicts resolved, right now the Helical logger captures logs not sent to it. I'd also add more information on logging information, e.g., what I used for log formatting.
-- Use different K8s namespaces, for now everything is in helical-pdqueiros for simplicity sake. But we could have one for airlfow, monitoring, ray, etc
+### Destroy deployment
+
+```bash
+terraform destroy
+# or for full deletion:
+kubectl delete all --all -n helical-pdqueiros --force
+kubectl delete namespace helical-pdqueiros --force
+kubectl delete pv local-dags-pv --force
+```
+
+Redis tends to hang while shutting down. You can skip things up with:
+```bash
+kubectl delete pod apache-airflow-redis-0  --namespace helical-pdqueiros --force
+```
+
+You can do the same with other problematic sticky pods, they'll be restarted anyhow.
+
+
 
 
 # Known issues
 
-1. Terraform apply Kuberay issues:
+- Terraform apply Kuberay issues:
 ```
 ╷
 │ Error: API did not recognize GroupVersionKind from manifest (CRD may not be installed)
@@ -508,7 +490,120 @@ terraform apply -target=helm_release.kuberay_operator
 terraform apply
 ```
 
-2. Mounting issues. Sometimes minikube won't mount the volume correctly. If that happens, you can mount it manually with:
+- If you have issues starting the docker operators due to this error:
 ```bash
-minikube mount "/home/pedroq/workspace:/host_workspace"
+HTTPError: 400 Client Error: Bad Request for url: http://airflow-docker-socket:2375/v1.51/containers/96fe8a3b85832292c1e456c20504c3f18e0190dcb31fefe33149ee0fee8db640/start
+```
+A docker or system reboot will fix the issue.
+
+- `FileNotFoundError: [Errno 2] No such file or directory: '/home/pedroq/.cache/helical/models/geneformer/v1/gene_median_dictionary.pkl'` If you get this error, run these commands:
+```bash
+source env.sh
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/gene_median_dictionary.pkl
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/token_dictionary.pkl
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/ensembl_mapping_dict.pkl
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/${MODEL_NAME}/config.json
+wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/${MODEL_NAME}/training_args.bin
+```
+
+# Useful commands and other info
+
+These are some commands I've used during development; you don't necessarily need them, these are just some references for myself.
+
+- Inspecting minikube:
+```bash
+minikube ssh
+```
+- Using Minikube's docker:
+```bash
+eval $(minikube -p minikube docker-env)
+```
+- Get all pods:
+```bash
+kubectl get pods -n helical-pdqueiros 
+```
+- Inspecting a pod:
+```bash
+kubectl exec -it <pod-name> -n helical-pdqueiros -- /bin/bash
+```
+- Describing a pod: 
+```bash
+kubectl describe pod <pod-name> -n helical-pdqueiros
+```
+- Deleting a pod: 
+```bash
+kubectl delete pod <pod-name> -n helical-pdqueiros
+```
+- Delete a namespace:
+```bash
+kubectl delete namespace helical-pdqueiros
+```
+- Restarting a pod:
+```bash
+kubectl rollout restart deployment <pod-name> -n helical-pdqueiros
+```
+- get chart default values, e.g., for airflow:
+```bash
+helm show values apache-airflow/airflow > default-values.yaml
+```
+- check Helm repos:
+```bash
+helm repo list
+```
+- check chart releases
+```bash
+# e.g., for grafana
+helm search repo grafana
+```
+
+- [Setting up docker.sock for Airflow DockerOperators](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/blob/master/docker-compose.yaml)
+
+# TODO
+
+Repo todo:
+- add GPU profiling
+- add Ray-gpu training
+- improve metrics dashboard
+- improve model scaling (there's a lot of new tools that could be useful for acceleration)
+- I've setup everything to be in the same docker network, but it could be better separated 
+- I didn't follow any security measures, since this was done for prototyping, obviously don't use this repo in a production environment
+- I'd split the processes into multiple images, the data splitting and processing could be done via a very light image with minimal requirements.
+- Add metrics storage (maybe redis) and push to pushgateway (already deployed)
+- Find a way to retrieve data/xcom through the DockerOperators, which at the moment is not possible the containers are terminated automatically (as intended). In any case, using something like Redis would like be preferrable (and easy). 
+- Find a way to deal with orphan containers generated via docker operator. If you stop your DAG midway, this will happen:
+```bash
+APIError: 409 Client Error for http://airflow-docker-socket:2375/v1.51/containers/create?name=helical-pdqueiros.fine_tune: Conflict ("Conflict. The container name "/helical-pdqueiros.fine_tune" is already in use by container "1b410b96c8adeeba7241c252bfdf7cff1b038cce6535a8d736d6b4293566d91c". You have to remove (or rename) that container to be able to reuse that name.")
+```
+- I had some issues downloading the necessary data from AWS (e.g., `gene_median_dictionary.pkl`). I'm not sure why, when I `exec` into the container, I can download them via wget and through helical. But through the DockerOperator, Helical's download method always fails. To avoid that, I baked these files into the image, which  anyway is a better practice to make sure the image is truly static and requires no external data (remember what happened during the AWS outage?).
+
+
+Helical todo:
+- fix logging (it's consuming too much and leading to weird behaviour)
+- clean up code in models
+- add accelerator to some of the models
+- migrate to hugging face trainer; not sure how feasible it is since some models have some specific internal behaviour
+- Add UV installation
+- Add dependencies grouping, the base pyproject is way too large, e.g.:
+    - dependency group for data processing
+    - dependency group per model -> I imagine you also run into compability issues quite often
+- Improve file path management
+- There's some weird behaviour in the data downloading, both locally and within containers. This seems to work when you download the data using `wget` but I think the runtime downloading function is not working properly.
+```bash
+Traceback (most recent call last):
+  File "/home/pedroq/envs/helical_pdqueiros/lib/python3.11/site-packages/decorator.py", line 235, in fun
+    return caller(func, *(extras + args), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pedroq/envs/helical_pdqueiros/lib/python3.11/site-packages/retry/api.py", line 73, in retry_decorator
+    return __retry_internal(partial(f, *args, **kwargs), exceptions, tries, delay, max_delay, backoff, jitter,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pedroq/envs/helical_pdqueiros/lib/python3.11/site-packages/retry/api.py", line 33, in __retry_internal
+    return f()
+           ^^^
+  File "/home/pedroq/personal/helical_pdqueiros/src/helical_pdqueiros/core/cell_type_annotation/data_processer.py", line 30, in __init__
+    self.tokenizer = TranscriptomeTokenizer(
+                     ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pedroq/envs/helical_pdqueiros/lib/python3.11/site-packages/helical/models/geneformer/geneformer_tokenizer.py", line 256, in __init__
+    with open(gene_median_file, "rb") as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/pedroq/.cache/helical/models/geneformer/v1/gene_median_dictionary.pkl'
 ```

@@ -1,0 +1,51 @@
+
+# ! this is just to build service in src, deployment is done through terraform 
+
+services:
+  helical-pdqueiros:
+    container_name: helical-pdqueiros
+    build:
+      context: .
+      dockerfile: ./Dockerfile-cpu
+      args:
+        - MODEL_TYPE=${MODEL_TYPE}
+        - MODEL_VERSION=${MODEL_VERSION}
+        - MODEL_NAME=${MODEL_NAME}
+    image: helical-pdqueiros:latest
+    volumes:
+      - ./data/helica_pdqueiros/:/app/data
+
+  helical-pdqueiros-gpu:
+    container_name: helical-pdqueiros-gpu
+    build:
+      context: .
+      dockerfile: ./Dockerfile-gpu
+      args:
+        - MODEL_TYPE=${MODEL_TYPE}
+        - MODEL_VERSION=${MODEL_VERSION}
+        - MODEL_NAME=${MODEL_NAME}
+    image: helical-pdqueiros:latest
+    volumes:
+      - ./data/helica_pdqueiros/:/app/data
+
+  helical-pdqueiros-airflow:
+    container_name: helical-pdqueiros-airflow
+    build:
+      context: .
+      dockerfile: ./Dockerfile-airflow
+    image: helical-pdqueiros-airflow:latest
+
+  helical-pdqueiros-ray-cpu:
+    container_name: helical-pdqueiros-ray-cpu
+    build:
+      context: .
+      dockerfile: ./Dockerfile-ray-cpu
+    image: helical-pdqueiros-ray-cpu:latest
+
+  helical-pdqueiros-ray-gpu:
+    container_name: helical-pdqueiros-ray-gpu
+    build:
+      context: .
+      dockerfile: ./Dockerfile-ray-gpu
+    image: helical-pdqueiros-ray-gpu:latest
+

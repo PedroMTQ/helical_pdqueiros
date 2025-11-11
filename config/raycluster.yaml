@@ -8,53 +8,27 @@ spec:
   headGroupSpec:
     rayStartParams:
       num-cpus: "0"
+    serviceType: NodePort
+
     template:
       spec:
         containers:
         - name: ray-head
-          image: rayproject/ray:2.5.0
+          image: helical-pdqueiros-ray-cpu
+          tag: latest
+          # it just uses the local one that we built
+          imagePullPolicy: Never
           resources:
-            limits:
-              cpu: "1"
-              # we could play around with this, but let's set it to 2gb for stability sake
-              memory: "2Gi"
             requests:
               cpu: "1"
-              memory: "2Gi"
+              memory: "4Gi"
+            limits:
+              cpu: "2"
+              # we could play around with this, but let's set it to 2gb for stability sake
+              memory: "8Gi"
 
   # note that I've set the worker specs to my local machine but this ought to change in a cloud env
   workerGroupSpecs:
-  # ------------------------------------------------------------------
-  # 1. GPU Worker Group (for ML/Deep Learning tasks)
-  # ------------------------------------------------------------------
-  - groupName: gpu-worker-group
-    replicas: 0           # Start with 1 GPU worker
-    minReplicas: 0
-    maxReplicas: 1        # Auto-scale up to 5 GPU workers
-    template:
-      spec:
-        # Use a Ray image that includes CUDA and ML libraries
-        containers:
-        - name: ray-worker
-          image: rayproject/ray-ml:2.5.0-gpu  # <--- CRITICAL: Use a GPU image
-          resources:
-            requests:
-              cpu: "16"
-              memory: "16Gi"
-              nvidia.com/gpu: "1"  # <--- CRITICAL: Request 1 GPU
-            limits:
-              cpu: "20"
-              memory: "16Gi"
-              nvidia.com/gpu: "1"  # <--- CRITICAL: Request 1 GPU
-
-        # OPTIONAL: Use nodeSelector to force these pods onto GPU-enabled nodes
-        nodeSelector:
-          # This label may vary based on your cloud/cluster setup
-          gpu: "true"
-
-  # ------------------------------------------------------------------
-  # 2. CPU Worker Group (for general purpose tasks)
-  # ------------------------------------------------------------------
   - groupName: cpu-worker-group
     # im using 1 replica as a starting point for testing purposes
     replicas: 1
@@ -64,7 +38,9 @@ spec:
       spec:
         containers:
         - name: ray-worker
-          image: rayproject/ray:2.5.0 # Use a standard Ray image
+          image: helical-pdqueiros-ray-cpu
+          tag: latest
+          imagePullPolicy: Never
           resources:
           # I set this to a quite small number since I'm running it locally with 23 cores and 32GB RAM
             requests:
@@ -73,3 +49,28 @@ spec:
             limits:
               cpu: "23"
               memory: "32Gi"
+
+  - groupName: gpu-worker-group
+    replicas: 0
+    minReplicas: 0
+    maxReplicas: 1
+    template:
+      spec:
+        containers:
+        - name: ray-worker
+          image: helical-pdqueiros-ray-gpu
+          tag: latest
+          imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: "16"
+              memory: "16Gi"
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "20"
+              memory: "16Gi"
+              nvidia.com/gpu: "1"
+
+        nodeSelector:
+          gpu: "true"
+

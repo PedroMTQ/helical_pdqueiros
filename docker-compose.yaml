@@ -1,9 +1,0 @@
-
-# ! this is just to build service in src, deployment is done through terraform 
-
-services:
-  helical_pdqueiros:
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-    image: helical-pdqueiros:latest

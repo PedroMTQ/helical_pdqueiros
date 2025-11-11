@@ -82,6 +82,20 @@ You need to have these installed on your machine:
 - Install [Docker](https://docs.docker.com/engine/install/)
 - Install [cuda](https://docs.nvidia.com/cuda/wsl-user-guide/index.html#cuda-support-for-wsl-2)
 
+If you are using WSL via a Windows sytem with a GPU install [Docker desktop](https://docs.docker.com/desktop/features/gpu/) for a straightforward way to enable GPU support on your docker engine.
+Eiher way, you can test if yuor GPU(s) are available by running this:
+```bash
+docker run --rm -it --gpus=all nvcr.io/nvidia/k8s/cuda-sample:nbody nbody -gpu -benchmark
+```
+You should see something like this:
+```bash
+> Compute 8.6 CUDA device: [NVIDIA GeForce RTX 3080]
+69632 bodies, total time for 10 iterations: 54.144 ms
+= 895.504 billion interactions per second
+= 17910.074 single-precision GFLOP/s at 20 flops per interaction
+```
+
+
 These are optional, and you only need them if you want to use Ray for distributed computing:
 - Install [Helm](https://helm.sh/docs/intro/install/)
 - Install [K8s](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
@@ -135,7 +149,7 @@ The main tools here (i.e., that you actually might interact with) are : Airflow,
 Now that you are done deploying the services, you can now build the images for the containers that will be deployed by Airflow via Docker operators. There's 2 versions here, `helical-pdqueiros-cpu` is a small image that contains some CPU-only requirements, whereas `helical-pdqueiros-gpu` contains all the requirements for running the actual fine-tuning.
 
 ```bash
-docker compose -f docker-compose-build.yaml build helical-pdqueiros helical-pdqueiros-gpu
+docker compose -f docker-compose-build.yaml build helical-pdqueiros-cpu helical-pdqueiros-gpu
 ```
 
 This image contains all my source code as well as Helical's package (among a few other dependencies).

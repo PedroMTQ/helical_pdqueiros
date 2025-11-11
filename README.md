@@ -71,16 +71,25 @@ To handle larger models and datasets efficiently, consider:
       - Workflow duration
 
 
+## Workflow template
 
-I'm using this example from Helical as [template](./helical/examples/run_models/run_geneformer.py) for the workflow in this repo.
+I'm using this example from Helical-AI as [template](./helical/examples/run_models/run_geneformer.py) for the general workflow of this repo.
 
 
 
 # Setup
 
+### Base requirements
+
 You need to have these installed on your machine:
 - Install [Docker](https://docs.docker.com/engine/install/)
 - Install [cuda](https://docs.nvidia.com/cuda/wsl-user-guide/index.html#cuda-support-for-wsl-2)
+
+
+### GPU setup
+
+I assume you have a system with a GPU, if not I would avoid running the fine-tuning step describe below.
+
 
 If you are using WSL via a Windows sytem with a GPU install [Docker desktop](https://docs.docker.com/desktop/features/gpu/) for a straightforward way to enable GPU support on your docker engine.
 Eiher way, you can test if yuor GPU(s) are available by running this:
@@ -95,6 +104,7 @@ You should see something like this:
 = 17910.074 single-precision GFLOP/s at 20 flops per interaction
 ```
 
+### Terraform and local cluster environment setup
 
 These are optional, and you only need them if you want to use Ray for distributed computing:
 - Install [Helm](https://helm.sh/docs/intro/install/)
@@ -105,12 +115,14 @@ These are optional, and you only need them if you want to use Ray for distribute
 
 ## Docker deployment
 
+Below you will find the instructions to setup all the necessary requirements to run Airflow and respective DAGs required for fine-tuning a Geneformer for cell type annotation.
+
+**Note that I've included a `.env` file which contains all the necessary environmental variables for setting up your containers**
+
+To get started with deploying the necessary containers follow these steps:
 ```bash
-# deploys mlflow and minio (for mlflow and "cloud" storage)
-# recipe: https://github.com/mlflow/mlflow/tree/master/docker-compose
-# builds our custom airflow image
+# we are using a custom Airflow image since we need open telemetry and docker operators
 docker compose -f docker-compose-build.yaml build helical-pdqueiros-airflow
-# deploys the services
 docker compose -f docker-compose-storage.yaml up -d
 docker compose -f docker-compose-monitoring.yaml up -d
 docker compose -f docker-compose-airflow.yaml up -d
@@ -118,7 +130,7 @@ docker compose -f docker-compose-airflow.yaml up -d
 
 This will deploy all basic services with docker, including:
 - minio for S3 simulation and Mlflow storage
-- postgres for Mlflow and Airflow. Note that I used the base docker compose file from [Airflow](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html); you could also deploy Airflow via [Terraform](https://github.com/airflow-helm/charts). To avoid exposing the docker.sock I'm also deploying a proxy (docker-socket-proxy) as explained [here](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/tree/master) and [here](https://medium.com/@benjcabalonajr_56579/using-docker-operator-on-airflow-running-inside-a-docker-container-7df5286daaa5).
+- postgres for Mlflow and Airflow. Note that I used the base docker compose file from [Airflow](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html); you could also deploy Airflow via [Terraform](https://github.com/airflow-helm/charts). To avoid exposing the host's docker.sock I'm also deploying a proxy (docker-socket-proxy) as explained [here](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/tree/master) and [here](https://medium.com/@benjcabalonajr_56579/using-docker-operator-on-airflow-running-inside-a-docker-container-7df5286daaa5).
 - Prometheus, Pushgateway, Cadvisor, Redis, Grafana, node-exporter, and otel-collector for monitoring. Otel-collector is used for Airflow monitoring, whereas the others are used for system and containers monitoring.
 
 Make sure you have all these containers:
@@ -146,13 +158,24 @@ quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z   storage-minio                
 
 The main tools here (i.e., that you actually might interact with) are : Airflow, Grafana, Mlflow, and Minio. All others are containers that are "supporting" these tools.
 
-Now that you are done deploying the services, you can now build the images for the containers that will be deployed by Airflow via Docker operators. There's 2 versions here, `helical-pdqueiros-cpu` is a small image that contains some CPU-only requirements, whereas `helical-pdqueiros-gpu` contains all the requirements for running the actual fine-tuning.
+Now that you are done deploying the services, you can now build the images for the containers that will be deployed by Airflow via Docker operators. There's 2 versions here, `helical-pdqueiros-cpu` is a small image that contains some CPU-only requirements, whereas `helical-pdqueiros-gpu` contains all the requirements for running the actual fine-tuning. You likely could further trim the GPU image but for the sake of keeping it simpler, I've used Helical-AI's Dockerfile as a template.
 
 ```bash
-docker compose -f docker-compose-build.yaml build helical-pdqueiros-cpu helical-pdqueiros-gpu
+docker compose -f docker-compose-build.yaml build helical-pdqueiros-cpu
+docker compose -f docker-compose-build.yaml build helical-pdqueiros-gpu
 ```
 
 This image contains all my source code as well as Helical's package (among a few other dependencies).
+
+You should end up with these images:
+```bash
+REPOSITORY                             TAG                            IMAGE ID       CREATED          SIZE
+helical-pdqueiros-cpu                  latest                         2a6c2dd3244a   6 minutes ago    3.87GB
+helical-pdqueiros-gpu                  latest                         b064f44875c6   37 minutes ago   20.8GB
+helical-pdqueiros-airflow              latest                         bb0a6e2e764c   56 minutes ago   2.92GB
+```
+Notice how helical-pdqueiros-cpu and helical-pdqueiros-gpu have such different sizes, and would therefore be faster to build, pull, and deploy allowing for faster development iterations.
+(*I would further split the helical package into groups*)
 
 Assuming everything was deployed correctly, you should now have access to all the necessary services and you can check their respective dashboards at:
 
@@ -170,26 +193,24 @@ In [Airflow](http://localhost:8080/) you will see these DAGs:
 ![airflow-dags](./images/airflow-dags.png)
 
 
-If you open [Grafana](http://localhost:3000/login) you will have multiple dashboards, this one among them where you can track system resources and Airflow runs. 
-# TODO add image
+If you open [Grafana](http://localhost:3000/login) you will have multiple dashboards, this one among them where you can track system resources and Airflow runs.
+Note that the [ti_success](https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/metrics.html) metric is not being exposed. This is apparently fixed in this [issue](https://github.com/apache/airflow/issues/52336), but I'm still having issues with a lack of metrics
 
 
 
 
 # Workflow
 
-## Sample data and template workflow
 
-- Sample [data](https://huggingface.co/datasets/helical-ai/yolksac_human)
-- Sample [notebook](https://github.com/helicalAI/helical/blob/release/examples/notebooks/Cell-Type-Annotation.ipynb)
+As per Helical-AI's example [notebook](https://github.com/helicalAI/helical/blob/release/examples/notebooks/Cell-Type-Annotation.ipynb) I've used this [dataset](https://huggingface.co/datasets/helical-ai/yolksac_human) for the Geneformer fine-tuning.
 
 ## General workflow
 
-1. User adds data to S3 storage (via UI)
-2. When new data arrives, a Dag is triggered (as a POC I didn't include a schedule interval)
-3. Data is [split](#data-splitting)
-4. Data is [processed](#data-processing)
-5. Model is [fine-tuned](#model-fine-tuning) and logged into Mlflow
+I've designed this pipeline in 4 major steps: 
+1. User or an automated process uploads training data to a staging area (for example to an S3 bucket).
+2. When new data arrives, a Dag is triggered (as a POC I didn't include a schedule interval) which [split](#data-splitting) the data into chunks
+3. These [chunks are processed](#data-processing) across multiple containers (if you set it up in that manner using K8s or Ray).
+4. A model is [fine-tuned](#model-fine-tuning) and the respective experiment is logged into Mlflow. Note that this last step should be triggered manually or with a large enough schedule interval as model training is quite expensive and something you want to monitor.
 
 
 Below you can find the underlying logic for each step (3-5). These were first created as Jobs for development and then deployed as Airflow Docker operators.
@@ -237,6 +258,7 @@ class FineTuneJob():
 ```
 
 
+Below I've described how you can run these pipelines locally, and I also went through the underlying logic of each step, so even if you don't intend to do local testing, you ought to go through the following section anyhow.
 
 
 ## Local testing
@@ -315,8 +337,67 @@ And that's the end of the pipeline. Later on the end-user could download the mod
 
 ### Airflow testing
 
-Now you can try the same in Airflow
+For your reference this is how these DAGs are setup:
+```python
 
+def get_task(execution_type: Literal['split_data', 'process_data', 'fine_tune'], image_name: str, device_requests: list=None):
+    command_to_run = f'helical_pdqueiros {execution_type}'
+    # https://airflow.apache.org/docs/apache-airflow-providers-docker/stable/_api/airflow/providers/docker/operators/docker/index.html
+    return DockerOperator(
+            task_id=f"run_helical_pdqueiros.{execution_type}",
+            container_name=f'helical-pdqueiros.{execution_type}',
+            image=image_name,
+            mounts=[
+                # We don't really need this mount since everything is hosted on MinIO (which is what you'd do in a distributed system). Anyhow, you can check the data flowing through the /tmp/ folder
+                Mount(source=LOCAL_DATA_PATH, target=CONTAINER_DATA_PATH, type='bind', read_only=False)
+                    ],
+            command=command_to_run,
+            private_environment  = dotenv_values(ENV_FILE),
+            api_version='1.51',
+            # api_version='auto',
+            network_mode="helical-network",
+            auto_remove='force',
+            # for docker in docker (tecnativa/docker-socket-proxy:v0.4.1) -> https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/tree/master
+            mount_tmp_dir=False,
+            docker_url="tcp://airflow-docker-socket:2375",
+            device_requests=device_requests,
+        )
+
+with DAG(
+    dag_id=f'{EXPERIMENT_NAME}.data_processing',
+    start_date=pendulum.datetime(2025, 1, 1),
+    # schedule='0 * * * *',
+    catchup=False,
+    tags=["helical-pdqueiros", 'data_processing'],
+    ) as dag:
+        split_data_task = get_task(execution_type='split_data', image_name=IMAGE_NAME)
+        process_data_task = get_task(execution_type='process_data', image_name=IMAGE_NAME)
+        split_data_task >> process_data_task
+
+with DAG(
+    dag_id=f'{EXPERIMENT_NAME}.model_fine_tuning',
+    start_date=pendulum.datetime(2025, 1, 1),
+    schedule=None,
+    catchup=False,
+    tags=["helical-pdqueiros", 'fine_tuning'],
+    ) as dag:
+        fine_tune_task = get_task(execution_type='fine_tune',
+                                  image_name=IMAGE_NAME_GPU,
+                                  # I only have one GPU, but you could use more
+                                  device_requests=[DeviceRequest(capabilities=[['gpu']], device_ids=['0'])])
+```
+
+Now you can try the same in Airflow:
+
+As you can see below, the DAG process data first split the data and then processes it, both via Docker Operators. 
+
+![airflow-dags](./images/dag-process-data.png)
+
+And then another DAG can be triggered to fine-tune the model training.
+Notice that since we had the `DeviceRequest` defined in our DockerOperator, the fine-tuning was done with using my local GPU (highlighted `cuda`). Similar to the local run, a model experimented is also logged into MLFlow.
+
+
+![airflow-dags](./images/dag-fine-tune.png)
 
 
 
@@ -571,18 +652,19 @@ helm search repo grafana
 ```
 
 - [Setting up docker.sock for Airflow DockerOperators](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/blob/master/docker-compose.yaml)
+- [Airflow config](https://airflow.apache.org/docs/apache-airflow/stable/configurations-ref.html#config-metrics)
+- [Airflow metrics](https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/metrics.html)
 
 # TODO
 
 Repo todo:
 - add GPU profiling
 - add Ray-gpu training
-- improve metrics dashboard
-- improve model scaling (there's a lot of new tools that could be useful for acceleration)
+- improve metrics dashboard and add metrics storage (maybe redis) and push to pushgateway (already deployed). You could do more interesting metrics besides counting DAGs, e.g., track model metrics over time, track amount of files/data points processed, check longitudinal data distribution, etc. The main problem here is that DAGs are ephemeral and so you'd need a way to archive the metrics. I've used Redis in the past for this and it's a rather easy solution. For example: service publishes to permanent collector using Redis for messaging; collector collects current metrics from Redis and updates values, and pushes to prometheus using pushgateway.
+- improve model scaling (there's a lot of new tools that could be useful for acceleration). I'd need to do some more research on that end.
 - I've setup everything to be in the same docker network, but it could be better separated 
 - I didn't follow any security measures, since this was done for prototyping, obviously don't use this repo in a production environment
 - I'd split the processes into multiple images, the data splitting and processing could be done via a very light image with minimal requirements.
-- Add metrics storage (maybe redis) and push to pushgateway (already deployed)
 - Find a way to retrieve data/xcom through the DockerOperators, which at the moment is not possible the containers are terminated automatically (as intended). In any case, using something like Redis would like be preferrable (and easy). 
 - Find a way to deal with orphan containers generated via docker operator. If you stop your DAG midway, this will happen:
 ```bash
@@ -596,8 +678,7 @@ Helical todo:
 - clean up code in models
 - add accelerator to some of the models
 - migrate to hugging face trainer; not sure how feasible it is since some models have some specific internal behaviour
-- Add UV installation
-- Add dependencies grouping, the base pyproject is way too large, e.g.:
+- Add UV installation and dependencies grouping (both very easy wins). The base pyproject is way too large, e.g.:
     - dependency group for data processing
     - dependency group per model -> I imagine you also run into compability issues quite often
 - Improve file path management

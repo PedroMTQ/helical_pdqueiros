@@ -61,6 +61,18 @@ x-airflow-common:
   environment:
     &airflow-common-env
 
+    # for metrics
+    AIRFLOW__METRICS__STATSD_ON: "False"
+    AIRFLOW__METRICS__OTEL_HOST: "monitoring-otel-collector"
+    AIRFLOW__METRICS__OTEL_INTERVAL_MILLISECONDS: "20000"
+    AIRFLOW__METRICS__OTEL_ON: "True"
+    AIRFLOW__METRICS__OTEL_PREFIX: "airflow"
+    AIRFLOW__METRICS__METRICS_ALLOW_LIST: "scheduler,executor,dagrun"
+    AIRFLOW__METRICS__OTEL_PORT: "4318"
+    # TODO disable this
+    AIRFLOW__TRACES__OTEL_DEBUG_TRACES_ON: "True"
+
+    
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow

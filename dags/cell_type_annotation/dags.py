@@ -8,7 +8,7 @@ from airflow.providers.docker.operators.docker import DockerOperator
 from docker.types import Mount, DeviceRequest
 from dotenv import dotenv_values
 
-IMAGE_NAME = 'helical-pdqueiros:latest'
+IMAGE_NAME = 'helical-pdqueiros-cpu:latest'
 IMAGE_NAME_GPU = 'helical-pdqueiros-gpu:latest'
 CONTAINER_DATA_PATH = '/app/tmp'
 LOCAL_DATA_PATH = '/home/pedroq/workspace/helical_pdqueiros/tmp'
@@ -61,5 +61,5 @@ with DAG(
     ) as dag:
         fine_tune_task = get_task(execution_type='fine_tune',
                                   image_name=IMAGE_NAME_GPU,
-                                  device_requests=DeviceRequest(capabilities=[['gpu']]))
+                                  device_requests=[DeviceRequest(capabilities=[['gpu']], device_ids=['0'])])
 

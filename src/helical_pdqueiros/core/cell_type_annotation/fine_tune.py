@@ -2,13 +2,8 @@ import logging
 import os
 import shutil
 from pathlib import Path
-
-import ray
-
 from helical_pdqueiros.core.base_task import BaseTask
-from helical_pdqueiros.core.cell_type_annotation.data_processer import CellTypeAnnotationDataProcessor
 from helical_pdqueiros.core.cell_type_annotation.fine_tuner import CellTypeAnnotationFineTuner
-from helical_pdqueiros.core.documents.data_document import DataDocument
 from helical_pdqueiros.io.logger import setup_logger
 from helical_pdqueiros.settings import (
     ARCHIVED_PROCESSED_DATA_PATH,
@@ -23,11 +18,6 @@ setup_logger(logger)
 SLEEP_TIME = int(os.getenv('SLEEP_TIME', '0'))
 RAY_ENDPOINT = os.getenv('RAY_ENDPOINT', 'ray://localhost:10001')
 
-@ray.remote
-def ray_process_data(input_path: str, output_path: str):
-    data_document = DataDocument(file_path=input_path)
-    data_processor = CellTypeAnnotationDataProcessor()
-    return data_processor.process_data(data_document=data_document, output_path=output_path)
 
 
 class FineTune(BaseTask):

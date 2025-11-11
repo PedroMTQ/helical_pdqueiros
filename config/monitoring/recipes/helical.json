@@ -19,7 +19,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": 0,
+  "id": 1,
   "links": [],
   "panels": [
     {
@@ -465,28 +465,16 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "count by(dag_id) (otel_airflow_dagrun_duration_success)\r\n",
+          "expr": "otel_airflow_task_instance_created_total",
           "format": "time_series",
-          "instant": false,
-          "legendFormat": "Success {{dag_id}}",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "count by(dag_id) (otel_airflow_dagrun_duration_failed)\r\n",
           "hide": false,
           "instant": false,
-          "legendFormat": "Failure {{dag_id}}",
+          "legendFormat": "{{dag_id}}",
           "range": true,
-          "refId": "B"
+          "refId": "A"
         }
       ],
-      "title": "DAGs success and failure counts",
+      "title": "DAG runs",
       "type": "gauge"
     },
     {
@@ -942,5 +930,5 @@
   "timezone": "browser",
   "title": "Helical dashboard",
   "uid": "9ZwpNmC1p",
-  "version": 12
+  "version": 2
 }

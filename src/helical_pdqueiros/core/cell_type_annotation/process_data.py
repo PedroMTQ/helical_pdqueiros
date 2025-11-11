@@ -6,7 +6,7 @@ from pathlib import Path
 
 import ray
 
-from helical_pdqueiros.core.base_task import BaseTask
+from helical_pdqueiros.core.base_task import BaseTask, ClientS3
 from helical_pdqueiros.core.cell_type_annotation.data_processer import CellTypeAnnotationDataProcessor
 from helical_pdqueiros.core.documents.data_document import DataDocument
 from helical_pdqueiros.io.logger import setup_logger
@@ -26,22 +26,26 @@ SLEEP_TIME = int(os.getenv('SLEEP_TIME', '0'))
 RAY_ENDPOINT = os.getenv('RAY_ENDPOINT', 'ray://localhost:10001')
 
 
-
 @ray.remote
-def debug_env():
-    print("Python executable:", sys.executable)
-    import subprocess
-    output = subprocess.check_output(["pip", "list"]).decode()
-    print(output)
-
-
-
-@ray.remote
-def ray_process_data(input_path: str, output_path: str):
-    logger.debug(f'Processing data in {input_path}')
-    data_document = DataDocument(file_path=input_path)
+def ray_process_data(file_name: str):
+    # all non-pickable objects are created here, and so we should avoid having very small chunks, otherwise we get more overhead
+    local_file_path = os.path.join(LOCAL_CHUNKED_DATA_PATH, file_name)
+    output_path = os.path.join(LOCAL_PROCESSED_DATA_PATH, f'{Path(file_name).stem}.dataset')
+    logger.debug(f'Processing data in {local_file_path}')
+    s3_client = ClientS3()
     data_processor = CellTypeAnnotationDataProcessor()
-    return data_processor.process_data(data_document=data_document, output_path=output_path)
+    try:
+        data_document = DataDocument(file_path=local_file_path)
+        output_path = data_processor.process_data(data_document=data_document, output_path=output_path)
+        compressed_output_path = ProcessData.compress_file(file_path=output_path)
+        return compressed_output_path
+    except Exception as e:
+        s3_file_path = os.path.join(CHUNKED_DATA_PATH, file_name)
+        s3_error_file_path = os.path.join(CHUNKED_DATA_ERROR_PATH, file_name)
+        logger.error(f'Failed to process {local_file_path}, moving from {s3_file_path} to {s3_error_file_path} skipping due to {e}')
+        s3_client.move_file(current_path=s3_file_path, new_path=s3_error_file_path)
+        s3_client.unlock_file(locked_s3_path=s3_error_file_path)
+    os.remove(local_file_path)
 
 
 class ProcessData(BaseTask):
@@ -91,9 +95,7 @@ class ProcessData(BaseTask):
         return res
 
 
-    # TODO
     def process_data_with_ray(self) -> list[str]:
-        # this was define in the Dockerfile-ray-cpu
         ray.init(RAY_ENDPOINT,
                      runtime_env={
                         "py_executable": "/app/.venv/bin/python",
@@ -104,30 +106,11 @@ class ProcessData(BaseTask):
                     },
                 )
         res = []
-        to_delete = []
         to_process = []
-        to_process.append(debug_env.remote())
         for file_name in os.listdir(LOCAL_CHUNKED_DATA_PATH):
-            local_file_path = os.path.join(LOCAL_CHUNKED_DATA_PATH, file_name)
-            output_path = os.path.join(LOCAL_PROCESSED_DATA_PATH, f'{Path(file_name).stem}.dataset')
-            to_delete.append(local_file_path)
-            # to_process.append(ray_process_data.remote(input_path=local_file_path,
-            #                                           output_path=output_path))
-
-        processed_data = ray.get(to_process)
-        print('processed_data', processed_data)
-
-            # try:
-            #     file_chunks = SplitData.chunk_file(file_path=local_file_path)
-            #     res.extend(file_chunks)
-            # except Exception as e:
-            #     s3_file_path = os.path.join(RAW_DATA_PATH, file_name)
-            #     s3_error_file_path = os.path.join(RAW_DATA_ERROR_PATH, file_name)
-            #     logger.error(f'Failed to chunk data in file {local_file_path}, moving from {s3_file_path} to {s3_error_file_path} skipping due to {e}')
-            #     self.s3_client.move_file(current_path=s3_file_path, new_path=s3_error_file_path)
-            #     self.s3_client.unlock_file(locked_s3_path=s3_error_file_path)
-        for file_path in to_delete:
-            os.remove(file_path)
+            to_process.append(ray_process_data.remote(file_name=file_name))
+        res = ray.get(to_process)
+        print('processed_data', res)
         return res
 
     def delete_chunked_files(self, list_files: list[str]) -> list[str]:

@@ -23,6 +23,14 @@ services:
         - MODEL_VERSION=${MODEL_VERSION}
         - MODEL_NAME=${MODEL_NAME}
     image: helical-pdqueiros-gpu:latest
+    # https://stackoverflow.com/a/70761193
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1 
+              capabilities: [gpu]
 
 
   helical-pdqueiros-airflow:

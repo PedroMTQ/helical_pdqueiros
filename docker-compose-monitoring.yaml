@@ -74,7 +74,7 @@ services:
   node-exporter:
     container_name: monitoring-node-exporter
     networks:
-    - helical-network
+      - helical-network
     image: quay.io/prometheus/node-exporter:latest
     command:
       - '--path.procfs=/host/proc'
@@ -95,7 +95,7 @@ services:
     user: '0'
     container_name: monitoring-otel-collector
     networks:
-    - helical-network
+      - helical-network
     image: otel/opentelemetry-collector-contrib
     volumes:
       - ./config/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml

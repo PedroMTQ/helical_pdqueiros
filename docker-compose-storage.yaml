@@ -84,6 +84,7 @@ services:
       create-bucket:
         condition: service_completed_successfully
     environment:
+      MLFLOW_SERVER_ALLOWED_HOSTS: ${MLFLOW_SERVER_ALLOWED_HOSTS}
       POSTGRES_USER: ${MLFLOW_POSTGRES_USER}
       POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PASSWORD}
       POSTGRES_DB: ${MLFLOW_POSTGRES_DB}

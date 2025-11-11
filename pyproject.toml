@@ -1,7 +1,7 @@
 [project]
 name = "helical_pdqueiros"
 version = "0.0.1"
-description = "Pod template for deploying Helical"
+description = "Package for Helical-AI exercise"
 authors = [{ name = "Pedro Queiros", email = "coding.paradox013@passmail.net" }]
 requires-python = ">=3.11"
 readme = "README.md"
@@ -16,9 +16,10 @@ dependencies = [
     "mlflow==3.5",
     "anndata",
     "h5py",
-    "ray[client,data,train,tune]==2.50.1",
+    "ray==2.50.1",
     # "anndata @ git+https://github.com/helicalAI/anndata",
 ]
+
 
 [dependency-groups]
 dev = [

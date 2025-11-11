@@ -22,7 +22,8 @@ services:
         - MODEL_TYPE=${MODEL_TYPE}
         - MODEL_VERSION=${MODEL_VERSION}
         - MODEL_NAME=${MODEL_NAME}
-    image: helical-pdqueiros:latest
+    image: helical-pdqueiros-gpu:latest
+
 
   helical-pdqueiros-airflow:
     container_name: helical-pdqueiros-airflow

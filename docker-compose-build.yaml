@@ -12,8 +12,6 @@ services:
         - MODEL_VERSION=${MODEL_VERSION}
         - MODEL_NAME=${MODEL_NAME}
     image: helical-pdqueiros:latest
-    volumes:
-      - ./data/helica_pdqueiros/:/app/data
 
   helical-pdqueiros-gpu:
     container_name: helical-pdqueiros-gpu
@@ -25,8 +23,6 @@ services:
         - MODEL_VERSION=${MODEL_VERSION}
         - MODEL_NAME=${MODEL_NAME}
     image: helical-pdqueiros:latest
-    volumes:
-      - ./data/helica_pdqueiros/:/app/data
 
   helical-pdqueiros-airflow:
     container_name: helical-pdqueiros-airflow

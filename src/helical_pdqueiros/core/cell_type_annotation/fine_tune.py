@@ -2,9 +2,9 @@ import logging
 import os
 import shutil
 from pathlib import Path
+
 from helical_pdqueiros.core.base_task import BaseTask
 from helical_pdqueiros.core.cell_type_annotation.fine_tuner import CellTypeAnnotationFineTuner
-from helical_pdqueiros.io.logger import setup_logger
 from helical_pdqueiros.settings import (
     ARCHIVED_PROCESSED_DATA_PATH,
     DATASET_PATTERN,
@@ -13,10 +13,7 @@ from helical_pdqueiros.settings import (
 )
 
 logger = logging.getLogger(__name__)
-setup_logger(logger)
 
-SLEEP_TIME = int(os.getenv('SLEEP_TIME', '0'))
-RAY_ENDPOINT = os.getenv('RAY_ENDPOINT', 'ray://localhost:10001')
 
 
 

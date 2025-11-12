@@ -5,7 +5,7 @@ from typing import Literal
 import pendulum
 from airflow.models.dag import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
-from docker.types import Mount, DeviceRequest
+from docker.types import DeviceRequest, Mount
 from dotenv import dotenv_values
 
 IMAGE_NAME = 'helical-pdqueiros-cpu:latest'

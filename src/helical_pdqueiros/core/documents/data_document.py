@@ -6,10 +6,7 @@ from pathlib import Path
 import anndata as ad
 import uuid6
 
-from helical_pdqueiros.io.logger import setup_logger
-
 logger = logging.getLogger(__name__)
-setup_logger(logger)
 
 @dataclass
 class DataDocument():

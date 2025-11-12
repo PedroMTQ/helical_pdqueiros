@@ -67,3 +67,4 @@ DATASET_LABEL_NAME = 'label'
 LABEL_NAME = os.getenv('LABEL_NAME', 'LVL1')
 
 MODEL_NAME = os.getenv('MODEL_NAME', "gf-6L-10M-i2048") # one of the smallest models
+SLEEP_TIME = int(os.getenv('SLEEP_TIME', '0'))

@@ -10,7 +10,6 @@ import torch
 from datasets import concatenate_datasets, load_from_disk
 from helical.models.geneformer import GeneformerConfig, GeneformerFineTuningModel
 
-from helical_pdqueiros.io.logger import setup_logger
 from helical_pdqueiros.settings import (
     CUDA_DEVICE,
     DATASET_LABEL_NAME,
@@ -20,7 +19,6 @@ from helical_pdqueiros.settings import (
 )
 
 logger = logging.getLogger(__name__)
-setup_logger(logger)
 
 MLFLOW_EXPERIMENT_NAME = os.getenv('MLFLOW_EXPERIMENT_NAME', "Geneformer_CellType_Classification")
 EPOCHS = int(os.getenv('EPOCHS', "2"))

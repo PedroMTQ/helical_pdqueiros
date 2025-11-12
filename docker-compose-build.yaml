@@ -1,5 +1,4 @@
 
-# ! this is just to build service in src, deployment is done through terraform 
 
 services:
   helical-pdqueiros-cpu:
@@ -40,17 +39,4 @@ services:
       dockerfile: ./Dockerfile-airflow
     image: helical-pdqueiros-airflow:latest
 
-  helical-pdqueiros-ray-cpu:
-    container_name: helical-pdqueiros-ray-cpu
-    build:
-      context: .
-      dockerfile: ./Dockerfile-ray-cpu
-    image: helical-pdqueiros-ray-cpu:latest
-
-  helical-pdqueiros-ray-gpu:
-    container_name: helical-pdqueiros-ray-gpu
-    build:
-      context: .
-      dockerfile: ./Dockerfile-ray-gpu
-    image: helical-pdqueiros-ray-gpu:latest
 

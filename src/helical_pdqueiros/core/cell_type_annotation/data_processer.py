@@ -1,6 +1,4 @@
 import logging
-import shutil
-from pathlib import Path
 
 import anndata as ad
 from helical.models.base_models import HelicalRNAModel
@@ -10,11 +8,9 @@ from helical.utils.mapping import map_gene_symbols_to_ensembl_ids
 from retry import retry
 
 from helical_pdqueiros.core.documents.data_document import DataDocument
-from helical_pdqueiros.io.logger import setup_logger
 from helical_pdqueiros.settings import DATASET_LABEL_NAME, LABEL_NAME, MODEL_NAME
 
 logger = logging.getLogger(__name__)
-setup_logger(logger)
 
 class CellTypeAnnotationDataProcessor(HelicalRNAModel):
     """

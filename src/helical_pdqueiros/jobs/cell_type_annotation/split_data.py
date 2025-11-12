@@ -1,15 +1,11 @@
 import logging
-import os
 from time import sleep
 
 from helical_pdqueiros.core.cell_type_annotation.split_data import SplitData
-from helical_pdqueiros.io.logger import setup_logger
 from helical_pdqueiros.jobs.base_job import BaseJob
+from helical_pdqueiros.settings import SLEEP_TIME
 
 logger = logging.getLogger(__name__)
-setup_logger(logger)
-SLEEP_TIME = int(os.getenv('SLEEP_TIME', '0'))
-
 
 
 class SplitDataJob(BaseJob):

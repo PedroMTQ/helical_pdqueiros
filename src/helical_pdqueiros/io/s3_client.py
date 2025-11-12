@@ -6,17 +6,15 @@ from pathlib import Path
 import boto3
 from botocore.client import Config
 
-from helical_pdqueiros.io.logger import setup_logger
 from helical_pdqueiros.settings import (
+    AWS_ACCESS_KEY_ID,
+    AWS_SECRET_ACCESS_KEY,
     HELICAL_S3_BUCKET,
     MINIO_HOST,
     MINIO_PORT,
-    AWS_ACCESS_KEY_ID,
-    AWS_SECRET_ACCESS_KEY,
 )
 
 logger = logging.getLogger(__name__)
-setup_logger(logger)
 
 
 

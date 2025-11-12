@@ -6,7 +6,6 @@ from retry import retry
 
 from helical_pdqueiros.core.base_task import BaseTask
 from helical_pdqueiros.core.documents.data_document import DataDocument
-from helical_pdqueiros.io.logger import setup_logger
 from helical_pdqueiros.settings import (
     ARCHIVED_RAW_DATA_PATH,
     CHUNK_BATCH_SIZE,
@@ -17,10 +16,7 @@ from helical_pdqueiros.settings import (
     RAW_DATA_PATH,
 )
 
-SLEEP_TIME = int(os.getenv('SLEEP_TIME', '0'))
-
 logger = logging.getLogger(__name__)
-setup_logger(logger)
 
 class SplitData(BaseTask):
     '''

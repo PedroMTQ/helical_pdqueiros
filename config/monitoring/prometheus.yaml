@@ -17,7 +17,7 @@ scrape_configs:
       - targets: ["monitoring-cadvisor:8080"]
         labels:
           instance: "cadvisor"
-      - targets: ["monitoring-node-exporter:9100"]
+      - targets: ["monitoring-node-exporter:9101"]
         labels: 
           instance: "node-exporter"
   - job_name: 'otel-collector'

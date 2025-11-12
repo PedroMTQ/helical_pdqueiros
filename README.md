@@ -1,32 +1,5 @@
 # helical-pdqueiros
 
-# TODO
-
-
-
-- [x] Setup Airflow (terraform):
-    - [x] minimum setup with python operators
-    - [x] setup with kubernetes pods
-    - [x] setup with Ray work distribution
-- [x] Setup Minio for data storage (terraform)
-- [] Setup Ray for distributed computing (terraform)
-- [x] Setup Mlflow for model versioning (terraform)
-- [x] Setup Prometheus+Grafana for monitoring (terraform)
-- [] Build training pipeline: 
-    - [x] DAG with sensor for downloading h5ad (task), splitting data into chunks (task) and uploading unprocessed h5ad chunks to S3 (task)
-    - [x] DAG with sensor for download h5ad chunks (task), processing h5ad chunks (task), and uploading processed h5ad chunks to s3 (task)
-    - [x] read processed h5ad chunks, training model from streamed chunks, and logging into Mlflow (task)
-    - [x] publish image with src code for all tasks
-    - [] add Ray distributed work execution
-- [x] define hardware with Ray
-- [x] define model-specific parameters, e.g., precision
-- [x] create grafana dashboards:
-    - [x] cadvisor for resources profiling
-    - [x] dag duration
-    - [] dag counts
-
-
-
 # Task description
 
 Objective: Build a containerized workflow orchestration environment that launches and monitors Helical model executions using Dockerized Airflow.
@@ -82,8 +55,8 @@ I'm using this example from Helical-AI as [template](./helical/examples/run_mode
 ### Base requirements
 
 You need to have these installed on your machine:
-- Install [Docker](https://docs.docker.com/engine/install/)
-- Install [cuda](https://docs.nvidia.com/cuda/wsl-user-guide/index.html#cuda-support-for-wsl-2)
+- Install [Docker Desktop](https://www.docker.com/get-started/) if running this repo on WSL
+- Install GPU drivers, I have an Nvidia GPU so I've installed their respective drivers.
 
 
 ### GPU setup
@@ -92,7 +65,7 @@ I assume you have a system with a GPU, if not I would avoid running the fine-tun
 
 
 If you are using WSL via a Windows sytem with a GPU install [Docker desktop](https://docs.docker.com/desktop/features/gpu/) for a straightforward way to enable GPU support on your docker engine.
-Eiher way, you can test if yuor GPU(s) are available by running this:
+You can test if your GPU(s) are available by running this:
 ```bash
 docker run --rm -it --gpus=all nvcr.io/nvidia/k8s/cuda-sample:nbody nbody -gpu -benchmark
 ```
@@ -104,13 +77,10 @@ You should see something like this:
 = 17910.074 single-precision GFLOP/s at 20 flops per interaction
 ```
 
-### Terraform and local cluster environment setup
-
-These are optional, and you only need them if you want to use Ray for distributed computing:
-- Install [Helm](https://helm.sh/docs/intro/install/)
-- Install [K8s](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
-- Install [Terraform](https://developer.hashicorp.com/terraform/install)
-- Install [minikube](https://minikube.sigs.k8s.io/docs/start/?arch=%2Flinux%2Fx86-64%2Fstable%2Fbinary+download)
+You can also run this to check GPU access:
+```bash
+docker run --rm --gpus all nvidia/cuda:12.1.1-base-ubuntu22.04 nvidia-smi
+```
 
 
 ## Docker deployment
@@ -119,7 +89,15 @@ Below you will find the instructions to setup all the necessary requirements to 
 
 **Note that I've included a `.env` file which contains all the necessary environmental variables for setting up your containers**
 
-To get started with deploying the necessary containers follow these steps:
+**Make sure you start Docker Desktop so that you have GPU access.**
+
+To test if your machine's GPUs are available run:
+```bash
+docker run --rm --gpus all nvidia/cuda:12.1.1-base-ubuntu22.04 nvidia-smi
+```
+
+
+To deploy all the necessary containers run:
 ```bash
 # we are using a custom Airflow image since we need open telemetry and docker operators
 docker compose -f docker-compose-build.yaml build helical-pdqueiros-airflow
@@ -193,8 +171,10 @@ In [Airflow](http://localhost:8080/) you will see these DAGs:
 ![airflow-dags](./images/airflow-dags.png)
 
 
-If you open [Grafana](http://localhost:3000/login) you will have multiple dashboards, this one among them where you can track system resources and Airflow runs.
-Note that the [ti_success](https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/metrics.html) metric is not being exposed. This is apparently fixed in this [issue](https://github.com/apache/airflow/issues/52336), but I'm still having issues with a lack of metrics
+If you open [Grafana](http://localhost:3000/login) you will have multiple dashboards, `Helical dashboard` among them, which is where you can track system resources and Airflow runs.
+
+![grafana-dashboard](./images/grafana-dashboard.png)
+
 
 
 
@@ -206,9 +186,10 @@ As per Helical-AI's example [notebook](https://github.com/helicalAI/helical/blob
 
 ## General workflow
 
-I've designed this pipeline in 4 major steps: 
+I've designed this pipeline in 4 major steps:
+
 1. User or an automated process uploads training data to a staging area (for example to an S3 bucket).
-2. When new data arrives, a Dag is triggered (as a POC I didn't include a schedule interval) which [split](#data-splitting) the data into chunks
+2. When new data arrives, a Dag is triggered (as a POC I didn't include a schedule interval) which [splits](#data-splitting) the raw data into chunks.
 3. These [chunks are processed](#data-processing) across multiple containers (if you set it up in that manner using K8s or Ray).
 4. A model is [fine-tuned](#model-fine-tuning) and the respective experiment is logged into Mlflow. Note that this last step should be triggered manually or with a large enough schedule interval as model training is quite expensive and something you want to monitor.
 
@@ -258,10 +239,10 @@ class FineTuneJob():
 ```
 
 
-Below I've described how you can run these pipelines locally, and I also went through the underlying logic of each step, so even if you don't intend to do local testing, you ought to go through the following section anyhow.
+**Below I've described how you can run these pipelines locally, and I also went through the underlying logic of each step, so even if you don't intend to do local testing, you ought to go through the following section anyhow.**
 
 
-## Local testing
+## Detailed workflow description and local testing
 
 You can test your DAGs locally without Airflow by running each job outside of Airflow, since in essence Airflow is merely providing scheduling and observability and all the business logic is within the `src` code.
 Keep in mind that I'm using [UV](https://docs.astral.sh/uv/getting-started/installation/) for environment management, which you can install with:
@@ -304,19 +285,19 @@ Afterwards, run the workflow in this order:
 ```bash
 helical_pdqueiros split_data
 ```
-After you run this, you will see 2 new folders within Minio `minio:helical/training_data/cell_type_classification/archived_raw_data` and `minio:helical/training_data/cell_type_classification/chunked_data`. The former contains your initial raw data, which is archived in case the pipeline needs to be run again, the latter contains the chunks of the initial data, which have been split to allow for distributed processing of the data.
+After you run this, you will see 2 new folders within Minio `minio:helical/training_data/cell_type_classification/archived_raw_data` and `minio:helical/training_data/cell_type_classification/chunked_data`. The former contains your initial raw data, which is archived in case the pipeline needs to be run again, the latter contains the chunks of the initial data, which have been split to allow for distributed processing of the data. If the user were to move the data from `archived_raw_data` to `raw_data` the dataset could be processed again.
 
 ```bash
 helical_pdqueiros process_data
 ```
-Now you can run the data processing, which will pick up a certain amount of chunks (i.e., `PROCESSING_CHUNKS_LIMIT`, 2 by default), process them and store them into `minio:helical/training_data/cell_type_classification/processed_data`. The idea of having a `PROCESSING_CHUNKS_LIMIT` variable is to allow for distributed computing, i.e., each DAG run picks up a certain number of chunks, and processes them in a distributed manner.
-Note that each chunk is compressed after the data is processed to reduce disk storage overhead.
+Now you can run the data processing, which will pick up a certain amount of chunks (i.e., `PROCESSING_CHUNKS_LIMIT`, 2 by default), process them and store them into `minio:helical/training_data/cell_type_classification/processed_data`. The idea of having a `PROCESSING_CHUNKS_LIMIT` variable is to allow for distributed computing, i.e., each DAG instance (i.e., container) run picks up a certain number of chunks, and processes them. This allows you to later setup up a pipeline that deploys multiple containers per DAG run.
+Note that each chunk is compressed after the data is processed to reduce local/cloud storage overhead.
 
 ```bash
 helical_pdqueiros fine_tune
 ```
-Now, the final step is the model fine-tuning. I'm using `gf-6L-10M-i2048` as the default since it's one of the smaller models.
-This pipeline will take all the recently processed data in `minio:helical/training_data/cell_type_classification/processed_data` and fine tune the `gf-6L-10M-i2048` model. This data will then be archived in `minio:helical/training_data/cell_type_classification/archived_processed_data` since I assume that it could be re-used for future runs of this pipeline. The idea here being that the downstream user adds new data, processes it, and then wants to use all of their (both new and archived) to fine-tune the initial model.
+The final step is the model fine-tuning. I'm using `gf-6L-10M-i2048` as the default since it's one of the smaller models.
+This pipeline will takes all the recently processed data in `minio:helical/training_data/cell_type_classification/processed_data` and fine tunes the `gf-6L-10M-i2048` model. This data will then be archived in `minio:helical/training_data/cell_type_classification/archived_processed_data` since I assume that it could be re-used for future runs of this pipeline. The idea here being that the downstream user adds new data, processes it, and then wants to use all of their (both new and archived) to fine-tune the initial model.
 
 *You should see this message `'gf-6L-10M-i2048' model is in 'eval' mode, on device 'cuda' with embedding mode 'cell'.` when running this pipeline; if you are not running GPU fine-tuning this pipeline will take quite a while.*
 
@@ -327,8 +308,8 @@ You will also find the model logged into Mlflow, as shown below:
 
 Note that I'm logging the model (for experiment purposes) but not registering it, as you would do for serving the model. You could register it with :
 ```bash
-model_uri = f"runs:/{run.info.run_id}/sklearn-model"
-mv = mlflow.register_model(model_uri, "RandomForestRegressionModel")
+model_uri = f"runs:/{run.info.run_id}/pytorch-model"
+mv = mlflow.register_model(model_uri, "gf-6L-10M-i2048")
 ```
 
 And that's the end of the pipeline. Later on the end-user could download the model from Mlflow and use it for classifying their data.
@@ -337,12 +318,13 @@ And that's the end of the pipeline. Later on the end-user could download the mod
 
 ### Airflow testing
 
+As I previously said, since we are running our DAGs using containers, the main added-value of Airflow is the scheduling and observability of the runs.  
+
 For your reference this is how these DAGs are setup:
 ```python
 
 def get_task(execution_type: Literal['split_data', 'process_data', 'fine_tune'], image_name: str, device_requests: list=None):
     command_to_run = f'helical_pdqueiros {execution_type}'
-    # https://airflow.apache.org/docs/apache-airflow-providers-docker/stable/_api/airflow/providers/docker/operators/docker/index.html
     return DockerOperator(
             task_id=f"run_helical_pdqueiros.{execution_type}",
             container_name=f'helical-pdqueiros.{execution_type}',
@@ -354,10 +336,8 @@ def get_task(execution_type: Literal['split_data', 'process_data', 'fine_tune'],
             command=command_to_run,
             private_environment  = dotenv_values(ENV_FILE),
             api_version='1.51',
-            # api_version='auto',
             network_mode="helical-network",
             auto_remove='force',
-            # for docker in docker (tecnativa/docker-socket-proxy:v0.4.1) -> https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/tree/master
             mount_tmp_dir=False,
             docker_url="tcp://airflow-docker-socket:2375",
             device_requests=device_requests,
@@ -366,7 +346,6 @@ def get_task(execution_type: Literal['split_data', 'process_data', 'fine_tune'],
 with DAG(
     dag_id=f'{EXPERIMENT_NAME}.data_processing',
     start_date=pendulum.datetime(2025, 1, 1),
-    # schedule='0 * * * *',
     catchup=False,
     tags=["helical-pdqueiros", 'data_processing'],
     ) as dag:
@@ -387,7 +366,6 @@ with DAG(
                                   device_requests=[DeviceRequest(capabilities=[['gpu']], device_ids=['0'])])
 ```
 
-Now you can try the same in Airflow:
 
 As you can see below, the DAG process data first split the data and then processes it, both via Docker Operators. 
 
@@ -399,166 +377,11 @@ Notice that since we had the `DeviceRequest` defined in our DockerOperator, the 
 
 ![airflow-dags](./images/dag-fine-tune.png)
 
+Now, as previously explained in [Detailed workflow description and local testing](#detailed-workflow-description-and-local-testing) you can start by loading sample data into [Minio](http://localhost:9001).
+Then first run the DAG `cell_type_classification.data_processing` and then `cell_type_classification.fine_tuning`
 
 
-## Ray and K8s deployment
-
-
-Now, let's move on to the deployment of Ray, which as a POC, was done through Terraform. I have some other terraform deployments in `terraform`, but for the purpose of this exercise, I've only finalized Ray's terraform file `kuberay.tf`. The former terraform files *should* work but haven't been fully tested. For the airflow.tf you are probably better off using the community [charts](https://github.com/airflow-helm/charts).
-
-Anyhow, moving on to the Ray's deployment.
-
-```bash
-# starts kubernetes
-minikube start
-```
-
-You then need to build the images that the Ray workers will use. We will only build the image for the ray-cpu as this is the only pipeline where Ray was integrated; the same could be done (and should) for distributed model training.
-
-```bash
-eval $(minikube -p minikube docker-env)
-# now build:
-docker compose -f docker-compose-build.yaml build helical-pdqueiros-ray-cpu
-# Check that the images are available with:
-minikube image ls
-```
-
-These images are quite large so it might take a while. Ideally you would publish these images to something like ECR or another docker image registry.
-
-If you have access to ECR you can this like so:
-```bash
-aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
-# source code
-docker compose build
-# for example:
-docker tag helical-pdqueiros:latest public.ecr.aws/d8n7f1a1/helical_pdqueiros/helical_pdqueiros:latest
-docker push public.ecr.aws/d8n7f1a1/helical_pdqueiros:latest
-```
-
-Keep in mind that [Amazon's](https://eu-central-1.console.aws.amazon.com/s3) [ECR](https://eu-central-1.console.aws.amazon.com/ecr) is not free, although you do some have free storage (at the time of writing it is 50GB). For prototyping purposes you are better off just building the images straight into Minikube, developing and publishing later on.
-
-
-If minikube starts and the images are available, you are all set to start using Ray!
-
-You can then start Kuberay with:
-
-```bash
-# terraform ray deployment
-terraform apply
-# tunnel for Ray
-kubectl port-forward service/helical-raycluster-head-svc -n helical-pdqueiros 8265:8265 10001:10001
-```
-
-This will deploy multiple pods, including 1 worker as defined in `helical_pdqueiros/config/raycluster.yaml`. You can customize this file according to your system.
-Notice that in `helical_pdqueiros/config/raycluster.yaml` we are using the images we built in the step above in each worker, the `*-cpu` image for the head and CPU workers, and the `*-gpu` image for the GPU worker.
-
-
-If you get this error when running `terraform apply`:
-```bash
-
-│ Error: API did not recognize GroupVersionKind from manifest (CRD may not be installed)
-│ 
-│   with kubernetes_manifest.raycluster,
-│   on kuberay.tf line 81, in resource "kubernetes_manifest" "raycluster":
-│   81: resource "kubernetes_manifest" "raycluster" {
-│ 
-│ no matches for kind "RayCluster" in group "ray.io"
-```
-Run this first:
-```bash
-terraform apply -target=helm_release.kuberay_operator
-```
-
-And then you can run everything else as usual, i.e., `terraform apply`.
-
-Make sure you all the pods running:
-```bash
-NAME                                               READY   STATUS    RESTARTS   AGE
-helical-raycluster-cpu-worker-group-worker-kd8cp   1/1     Running   0          29s
-helical-raycluster-head-gsjnx                      1/1     Running   0          69s
-kuberay-apiserver-c6bc7f7c4-824ps                  2/2     Running   0          11m
-kuberay-operator-6c8f855d77-8ghhz                  1/1     Running   0          12m
-
-```
-
-
-##\ Shutting down and deleting everything
-
-Shutting everything down
-
-```bash
-terraform destroy
-minikube stop
-docker compose -f docker-compose-storage.yaml down
-docker compose -f docker-compose-monitoring.yaml down
-docker compose -f docker-compose-airflow.yaml down
-```
-
-
-
-
-
-
-
-### Minikube dashboard
-
-```
-# in another console you can check the dashboard with:
-minikube dashboard --port=8081
-```
-You can then open the provided link, e.g.,: `http://127.0.0.1:8081/api/v1/namespaces/kubernetes-dashboard/services/http:kubernetes-dashboard:/proxy/#/workloads?namespace=helical-pdqueiros`
-
-**If you are checking the minikube dashboard, make sure you use the correct namespace, i.e., "helical-pdqueiros"**
-
-Generally it will take some time for terraform to finish since it waits until all deployments are done
-
-You can check all the pods via the console with: 
-```
-kubectl get pods --namespace helical-pdqueiros
-```
-
-
-### Ray dashboard
-
-I've setup my Ray worker specs in `config/raycluster.yaml`; I've done so according to my local machine with 1 GPU (10GB nvidia RTX 3080) and 23 CPUs and 32GB RAM.
-
-Create a tunnel via minikube to inspect the Ray dashboard:
-```bash
-# 8265 for the dashboard, 10001 for the ray cluster
-kubectl port-forward service/helical-raycluster-head-svc -n helical-pdqueiros 8265:8265 10001:10001
-```
-Go to `http://127.0.0.1:8265/#/overview` to see the Ray dashboard.
-
-### Airflow with Terraform
-
-If you deployed Airflow via Terraform you need to create a tunnel between your system and minikube. The idea is the same as with Ray.
-
-Create a tunnel via minikube to inspect the Airflow dashboard:
-```bash
-kubectl port-forward service/apache-airflow-api-server -n helical-pdqueiros 8000:8080 
-```
-
-And then go to the port you specified or randomly assigned by minikube: `http://127.0.0.1:8000/`
-
-
-
-### Destroy deployment
-
-```bash
-terraform destroy
-# or for full deletion:
-kubectl delete all --all -n helical-pdqueiros --force
-kubectl delete namespace helical-pdqueiros --force
-kubectl delete pv local-dags-pv --force
-```
-
-Redis tends to hang while shutting down. You can skip things up with:
-```bash
-kubectl delete pod apache-airflow-redis-0  --namespace helical-pdqueiros --force
-```
-
-You can do the same with other problematic sticky pods, they'll be restarted anyhow.
-
+**And this is basically the end of this showcase...**
 
 
 
@@ -601,65 +424,26 @@ wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.e
 wget -P ${HOME}/.cache/helical/models/geneformer/v1/ https://helicalpackage.s3.eu-west-2.amazonaws.com/${MODEL_TYPE}/${MODEL_VERSION}/${MODEL_NAME}/training_args.bin
 ```
 
-# Useful commands and other info
-
-These are some commands I've used during development; you don't necessarily need them, these are just some references for myself.
-
-- Inspecting minikube:
+- Airflow's docker operator not recognizing GPU:
 ```bash
-minikube ssh
-```
-- Using Minikube's docker:
-```bash
-eval $(minikube -p minikube docker-env)
-```
-- Get all pods:
-```bash
-kubectl get pods -n helical-pdqueiros 
-```
-- Inspecting a pod:
-```bash
-kubectl exec -it <pod-name> -n helical-pdqueiros -- /bin/bash
-```
-- Describing a pod: 
-```bash
-kubectl describe pod <pod-name> -n helical-pdqueiros
-```
-- Deleting a pod: 
-```bash
-kubectl delete pod <pod-name> -n helical-pdqueiros
-```
-- Delete a namespace:
-```bash
-kubectl delete namespace helical-pdqueiros
-```
-- Restarting a pod:
-```bash
-kubectl rollout restart deployment <pod-name> -n helical-pdqueiros
-```
-- get chart default values, e.g., for airflow:
-```bash
-helm show values apache-airflow/airflow > default-values.yaml
-```
-- check Helm repos:
-```bash
-helm repo list
-```
-- check chart releases
-```bash
-# e.g., for grafana
-helm search repo grafana
+APIError: 500 Server Error for http://airflow-docker-socket:2375/v1.51/containers/c1081585ee0a0df187228d4f700dee1de67228325f97b3e2875cdc1c2497a505/start: Internal Server Error ("could not select device driver "" with capabilities: [[gpu]]")
 ```
 
-- [Setting up docker.sock for Airflow DockerOperators](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/blob/master/docker-compose.yaml)
-- [Airflow config](https://airflow.apache.org/docs/apache-airflow/stable/configurations-ref.html#config-metrics)
-- [Airflow metrics](https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/metrics.html)
+If you get this error, it basically means your docker engine is not correctly passing through your machine's GPU (if you are running WSL). What I've found that worked was to shutdown wsl and Docker Desktop. Once that is done, you can first start Docker Desktop which will in turn initialize the docker engine within WSL. Make sure you also enable WSL integration in Docker Desktop:
 
-# TODO
+![docker-desktop](./images/docker-desktop.png)
 
-Repo todo:
+After this is done start all the containers and retry running your DAG. It should work now, if it doesn't it's likely still a docker engine and GPU passthrough issue.
+
+
+
+# Future TODO
+
+## Repo TODO
+
 - add GPU profiling
 - add Ray-gpu training
+- I couldn't expose scrape the `ti_success` and `ti_failure` metrics from Prometheus although I do have other `otel_airflow_*` metrics being correctly exposed. I'm not sure if it's a bug from my end or Airflow's
 - improve metrics dashboard and add metrics storage (maybe redis) and push to pushgateway (already deployed). You could do more interesting metrics besides counting DAGs, e.g., track model metrics over time, track amount of files/data points processed, check longitudinal data distribution, etc. The main problem here is that DAGs are ephemeral and so you'd need a way to archive the metrics. I've used Redis in the past for this and it's a rather easy solution. For example: service publishes to permanent collector using Redis for messaging; collector collects current metrics from Redis and updates values, and pushes to prometheus using pushgateway.
 - improve model scaling (there's a lot of new tools that could be useful for acceleration). I'd need to do some more research on that end.
 - I've setup everything to be in the same docker network, but it could be better separated 
@@ -673,7 +457,8 @@ APIError: 409 Client Error for http://airflow-docker-socket:2375/v1.51/container
 - I had some issues downloading the necessary data from AWS (e.g., `gene_median_dictionary.pkl`). I'm not sure why, when I `exec` into the container, I can download them via wget and through helical. But through the DockerOperator, Helical's download method always fails. To avoid that, I baked these files into the image, which  anyway is a better practice to make sure the image is truly static and requires no external data (remember what happened during the AWS outage?).
 
 
-Helical todo:
+## Helical TODO
+
 - fix logging (it's consuming too much and leading to weird behaviour)
 - clean up code in models
 - add accelerator to some of the models
@@ -702,3 +487,10 @@ Traceback (most recent call last):
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 FileNotFoundError: [Errno 2] No such file or directory: '/home/pedroq/.cache/helical/models/geneformer/v1/gene_median_dictionary.pkl'
 ```
+
+
+# Other info
+
+- [Setting up docker.sock for Airflow DockerOperators](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/blob/master/docker-compose.yaml)
+- [Airflow config](https://airflow.apache.org/docs/apache-airflow/stable/configurations-ref.html#config-metrics)
+- [Airflow metrics](https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/metrics.html)

@@ -323,35 +323,68 @@ As I previously said, since we are running our DAGs using containers, the main a
 For your reference this is how these DAGs are setup:
 ```python
 
+ENV_CONFIG = dotenv_values(ENV_FILE)
+BUCKET_NAME = ENV_CONFIG['HELICAL_S3_BUCKET']
+MINIO_CONNECTION = Variable.get('MINIO_CONNECTION')
+
 def get_task(execution_type: Literal['split_data', 'process_data', 'fine_tune'], image_name: str, device_requests: list=None):
     command_to_run = f'helical_pdqueiros {execution_type}'
+    # https://airflow.apache.org/docs/apache-airflow-providers-docker/stable/_api/airflow/providers/docker/operators/docker/index.html
+    container_id = uuid6.uuid7().hex
     return DockerOperator(
             task_id=f"run_helical_pdqueiros.{execution_type}",
-            container_name=f'helical-pdqueiros.{execution_type}',
+            container_name=f'helical-pdqueiros.{execution_type}.{container_id}',
             image=image_name,
             mounts=[
-                # We don't really need this mount since everything is hosted on MinIO (which is what you'd do in a distributed system). Anyhow, you can check the data flowing through the /tmp/ folder
+                # I've set the SLEEP_TIME between internal steps to 5 so you can see the data flowing through the mount. But technically you don't need this at all
+                # https://docker-py.readthedocs.io/en/stable/api.html?highlight=mount#docker.types.Mount
                 Mount(source=LOCAL_DATA_PATH, target=CONTAINER_DATA_PATH, type='bind', read_only=False)
                     ],
             command=command_to_run,
             private_environment  = dotenv_values(ENV_FILE),
             api_version='1.51',
+            # api_version='auto',
             network_mode="helical-network",
             auto_remove='force',
+            # for docker in docker (tecnativa/docker-socket-proxy:v0.4.1) -> https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/tree/master
             mount_tmp_dir=False,
             docker_url="tcp://airflow-docker-socket:2375",
             device_requests=device_requests,
         )
 
 with DAG(
-    dag_id=f'{EXPERIMENT_NAME}.data_processing',
+    dag_id=f'{EXPERIMENT_NAME}.split_data',
     start_date=pendulum.datetime(2025, 1, 1),
+    schedule='* * * * *',
     catchup=False,
-    tags=["helical-pdqueiros", 'data_processing'],
+    tags=["helical-pdqueiros", 'split_data'],
     ) as dag:
+        sensor_key_with_regex = S3KeySensor(task_id="sensor_key_with_regex.split_data",
+                                            # this is the connection ID we setup in the UI
+                                            aws_conn_id=MINIO_CONNECTION,
+                                            bucket_name=BUCKET_NAME,
+                                            bucket_key=ENV_CONFIG['SENSOR__RAW_DATA_PATTERN'],
+                                            timeout=10,
+                                            use_regex=True)
         split_data_task = get_task(execution_type='split_data', image_name=IMAGE_NAME)
+        sensor_key_with_regex >> split_data_task
+
+with DAG(
+    dag_id=f'{EXPERIMENT_NAME}.process_data',
+    start_date=pendulum.datetime(2025, 1, 1),
+    schedule='* * * * *',
+    catchup=False,
+    tags=["helical-pdqueiros", 'process_data'],
+    ) as dag:
+        sensor_key_with_regex = S3KeySensor(task_id="sensor_key_with_regex.process_data",
+                                            aws_conn_id=MINIO_CONNECTION,
+                                            bucket_name=BUCKET_NAME,
+                                            bucket_key=ENV_CONFIG['SENSOR__CHUNKED_DATA_PATTERN'],
+                                            timeout=10,
+                                            use_regex=True)
         process_data_task = get_task(execution_type='process_data', image_name=IMAGE_NAME)
-        split_data_task >> process_data_task
+        sensor_key_with_regex >> process_data_task
+
 
 with DAG(
     dag_id=f'{EXPERIMENT_NAME}.model_fine_tuning',
@@ -362,51 +395,53 @@ with DAG(
     ) as dag:
         fine_tune_task = get_task(execution_type='fine_tune',
                                   image_name=IMAGE_NAME_GPU,
-                                  # I only have one GPU, but you could use more
                                   device_requests=[DeviceRequest(capabilities=[['gpu']], device_ids=['0'])])
+
+
+
 ```
 
+As you can see above, there's 3 DAGs, the first 2 (`cell_type_classification.split_data` and `cell_type_classification.process_data`) are triggered via S3 sensors.
 
-As you can see below, the DAG process data first split the data and then processes it, both via Docker Operators. 
+### **Note that you need to create a connection to MinIO through the Airflow UI**
 
-![airflow-dags](./images/dag-process-data.png)
+![minio-connection](./images/minio-connection.png)
 
-And then another DAG can be triggered to fine-tune the model training.
+Additionally, while I've used load_dotenv to load our environmental variables (by mounting the `.env` file), in a production environment you are better off defining variables through the UI and then using `from airflow.sdk import Variable`. You can see the `MINIO_CONNECTION` example in the code and in the image below:
+
+![minio-connection-variable](./images/minio-connection-variable.png)
+s
+
+As you can see from the code and image below, these 2 DAGs are being trigger every minute by this sensor, which checks MinIO for regex patterns I've defined in the `.env` file:
+```bash
+SENSOR__RAW_DATA_PATTERN="training_data/cell_type_classification/raw_data/(.*\.h5ad)$"
+SENSOR__CHUNKED_DATA_PATTERN="training_data/cell_type_classification/chunked_data/(.*\.h5ad)$"
+```
+If the sensor finds these patterns in MinIO, then the next task of the DAG is triggered.
+The important detail here being that `cell_type_classification.process_data` can be triggered multiple times, since each internal task (`process_data_task`) only takes a certain amount of `PROCESSING_CHUNKS_LIMIT` chunks per run. So, imagine that you have a very large dataset that is split in `cell_type_classification.split_data` into very large chunks that hours to process; by triggering the `cell_type_classification.process_data` DAG multiple times, you are able to parallelize the data processing.
+
+
+![dags-parallel](./images/dags-parallel.png)
+
+![dag-process-data](./images/dag-process-data.png)
+
+
+Lastly, you can manually trigger the `fine_tuning` DAG which runs the actual the model training.
 Notice that since we had the `DeviceRequest` defined in our DockerOperator, the fine-tuning was done with using my local GPU (highlighted `cuda`). Similar to the local run, a model experimented is also logged into MLFlow.
 
 
-![airflow-dags](./images/dag-fine-tune.png)
+![dag-fine-tune](./images/dag-fine-tune.png)
 
 Now, as previously explained in [Detailed workflow description and local testing](#detailed-workflow-description-and-local-testing) you can start by loading sample data into [Minio](http://localhost:9001).
-Then first run the DAG `cell_type_classification.data_processing` and then `cell_type_classification.fine_tuning`
+Then first wait for the DAGs `cell_type_classification.split_data` and `cell_type_classification.process_data` to finish and then you can run `cell_type_classification.fine_tuning`
 
 
 **And this is basically the end of this showcase...**
 
 
 
-# Known issues
+# Troubleshooting
 
-- Terraform apply Kuberay issues:
-```
-╷
-│ Error: API did not recognize GroupVersionKind from manifest (CRD may not be installed)
-│ 
-│   with kubernetes_manifest.raycluster,
-│   on kuberay.tf line 51, in resource "kubernetes_manifest" "raycluster":
-│   51: resource "kubernetes_manifest" "raycluster" {
-│ 
-│ no matches for kind "RayCluster" in group "ray.io"
-╵
-```
-
-When this happens you can:
-```bash
-# run this first to first install the kuberay CRD 
-terraform apply -target=helm_release.kuberay_operator
-# deploy the rest
-terraform apply
-```
 
 - If you have issues starting the docker operators due to this error:
 ```bash
@@ -575,3 +610,24 @@ You have to also tunnel into the head service so that the ray endpoint (localhos
 kubectl port-forward service/helical-raycluster-head-svc -n helical-pdqueiros 8265:8265 10001:10001
 ```
 
+
+Terraform apply Kuberay issues:
+```
+╷
+│ Error: API did not recognize GroupVersionKind from manifest (CRD may not be installed)
+│ 
+│   with kubernetes_manifest.raycluster,
+│   on kuberay.tf line 51, in resource "kubernetes_manifest" "raycluster":
+│   51: resource "kubernetes_manifest" "raycluster" {
+│ 
+│ no matches for kind "RayCluster" in group "ray.io"
+╵
+```
+
+When this happens you can:
+```bash
+# run this first to first install the kuberay CRD 
+terraform apply -target=helm_release.kuberay_operator
+# deploy the rest
+terraform apply
+```

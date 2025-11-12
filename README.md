@@ -426,6 +426,10 @@ The important detail here being that `cell_type_classification.process_data` can
 ![dag-process-data](./images/dag-process-data.png)
 
 
+Another alternative here is to use dynamic task mapping to trigger multiple `cell_type_classification.process_data` tasks. For that we'd have to properly expose the `cell_type_classification.split_data` output into the xcom and pass it to process_data
+if that works well we could then just run process_data_task.expand(). But I haven't tried pushing to the xcom via DockerOperator and from my understanding it reads the data from the logs, which might not be that reliable.
+
+
 Lastly, you can manually trigger the `fine_tuning` DAG which runs the actual the model training.
 Notice that since we had the `DeviceRequest` defined in our DockerOperator, the fine-tuning was done with using my local GPU (highlighted `cuda`). Similar to the local run, a model experimented is also logged into MLFlow.
 

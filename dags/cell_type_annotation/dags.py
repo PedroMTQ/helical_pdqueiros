@@ -1,14 +1,15 @@
 import logging
 import os
 from typing import Literal
-from airflow.providers.amazon.aws.sensors.s3 import S3KeySensor
+
 import pendulum
+import uuid6
 from airflow.models.dag import DAG
+from airflow.providers.amazon.aws.sensors.s3 import S3KeySensor
 from airflow.providers.docker.operators.docker import DockerOperator
+from airflow.sdk import Variable
 from docker.types import DeviceRequest, Mount
 from dotenv import dotenv_values
-import uuid6
-from airflow.sdk import Variable
 
 IMAGE_NAME = 'helical-pdqueiros-cpu:latest'
 IMAGE_NAME_GPU = 'helical-pdqueiros-gpu:latest'
@@ -17,7 +18,7 @@ LOCAL_DATA_PATH = '/home/pedroq/workspace/helical_pdqueiros/tmp'
 ENV_FILE = '/app/.env'
 logger = logging.getLogger(__name__)
 EXPERIMENT_NAME = os.getenv('EXPERIMENT_NAME', 'cell_type_classification')
-CUDA_DEVICE_ID = os.getenv('CUDA_DEVICE_ID', '')
+CUDA_DEVICE_ID = os.getenv('CUDA_DEVICE_ID')
 
 ENV_CONFIG = dotenv_values(ENV_FILE)
 BUCKET_NAME = ENV_CONFIG['HELICAL_S3_BUCKET']
@@ -68,6 +69,11 @@ with DAG(
         split_data_task = get_task(execution_type='split_data', image_name=IMAGE_NAME)
         sensor_key_with_regex >> split_data_task
 
+
+'''
+We could actually add dynamic task mapping here as well, but we'd have to properly expose the split_data output into the xcom and pass it to process_data
+if that works well we could then just run process_data_task.expand()
+'''
 with DAG(
     dag_id=f'{EXPERIMENT_NAME}.process_data',
     start_date=pendulum.datetime(2025, 1, 1),
@@ -94,5 +100,5 @@ with DAG(
     ) as dag:
         fine_tune_task = get_task(execution_type='fine_tune',
                                   image_name=IMAGE_NAME_GPU,
-                                  device_requests=[DeviceRequest(capabilities=[['gpu']], device_ids=['0'])])
+                                  device_requests=[DeviceRequest(capabilities=[['gpu']], device_ids=[CUDA_DEVICE_ID])])
 

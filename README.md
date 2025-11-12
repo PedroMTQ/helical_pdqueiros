@@ -108,7 +108,7 @@ docker compose -f docker-compose-airflow.yaml up -d
 
 This will deploy all basic services with docker, including:
 - minio for S3 simulation and Mlflow storage
-- postgres for Mlflow and Airflow. Note that I used the base docker compose file from [Airflow](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html); you could also deploy Airflow via [Terraform](https://github.com/airflow-helm/charts). To avoid exposing the host's docker.sock I'm also deploying a proxy (docker-socket-proxy) as explained [here](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/tree/master) and [here](https://medium.com/@benjcabalonajr_56579/using-docker-operator-on-airflow-running-inside-a-docker-container-7df5286daaa5).
+- postgres for Mlflow and Airflow. Note that I used the base docker compose file from [Airflow](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html). To avoid exposing the host's docker.sock I'm also deploying a proxy (docker-socket-proxy) as explained [here](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/tree/master) and [here](https://medium.com/@benjcabalonajr_56579/using-docker-operator-on-airflow-running-inside-a-docker-container-7df5286daaa5).
 - Prometheus, Pushgateway, Cadvisor, Redis, Grafana, node-exporter, and otel-collector for monitoring. Otel-collector is used for Airflow monitoring, whereas the others are used for system and containers monitoring.
 
 Make sure you have all these containers:
@@ -136,7 +136,7 @@ quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z   storage-minio                
 
 The main tools here (i.e., that you actually might interact with) are : Airflow, Grafana, Mlflow, and Minio. All others are containers that are "supporting" these tools.
 
-Now that you are done deploying the services, you can now build the images for the containers that will be deployed by Airflow via Docker operators. There's 2 versions here, `helical-pdqueiros-cpu` is a small image that contains some CPU-only requirements, whereas `helical-pdqueiros-gpu` contains all the requirements for running the actual fine-tuning. You likely could further trim the GPU image but for the sake of keeping it simpler, I've used Helical-AI's Dockerfile as a template.
+Now that you are done deploying the services, you can now build the images for the containers that will be deployed by Airflow via Docker operators. There's 2 versions here, `helical-pdqueiros-cpu` is contains CPU-only requirements, whereas `helical-pdqueiros-gpu` contains all the requirements for running the actual fine-tuning. You likely could further trim the GPU image but for the sake of keeping it simple, I've used Helical-AI's Dockerfile as a template.
 
 ```bash
 docker compose -f docker-compose-build.yaml build helical-pdqueiros-cpu
@@ -152,8 +152,6 @@ helical-pdqueiros-cpu                  latest                         2a6c2dd324
 helical-pdqueiros-gpu                  latest                         b064f44875c6   37 minutes ago   20.8GB
 helical-pdqueiros-airflow              latest                         bb0a6e2e764c   56 minutes ago   2.92GB
 ```
-Notice how helical-pdqueiros-cpu and helical-pdqueiros-gpu have such different sizes, and would therefore be faster to build, pull, and deploy allowing for faster development iterations.
-(*I would further split the helical package into groups*)
 
 Assuming everything was deployed correctly, you should now have access to all the necessary services and you can check their respective dashboards at:
 
@@ -193,7 +191,7 @@ I've designed this pipeline in 4 major steps:
 3. These [chunks are processed](#data-processing) across multiple containers (if you set it up in that manner using K8s or Ray).
 4. A model is [fine-tuned](#model-fine-tuning) and the respective experiment is logged into Mlflow. Note that this last step should be triggered manually or with a large enough schedule interval as model training is quite expensive and something you want to monitor.
 
-
+**Note that files are locked in Minio (suffix `.lock` is added) in order to avoid processing the same data data twice**
 Below you can find the underlying logic for each step (3-5). These were first created as Jobs for development and then deployed as Airflow Docker operators.
 
 ### Data splitting
@@ -635,3 +633,5 @@ terraform apply -target=helm_release.kuberay_operator
 # deploy the rest
 terraform apply
 ```
+
+- [Airflow Terraform](https://github.com/airflow-helm/charts)

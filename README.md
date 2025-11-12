@@ -290,7 +290,7 @@ After you run this, you will see 2 new folders within Minio `minio:helical/train
 ```bash
 helical_pdqueiros process_data
 ```
-Now you can run the data processing, which will pick up a certain amount of chunks (i.e., `PROCESSING_CHUNKS_LIMIT`, 2 by default), process them and store them into `minio:helical/training_data/cell_type_classification/processed_data`. The idea of having a `PROCESSING_CHUNKS_LIMIT` variable is to allow for distributed computing, i.e., each DAG instance (i.e., container) run picks up a certain number of chunks, and processes them. This allows you to later setup up a pipeline that deploys multiple containers per DAG run.
+Now you can run the data processing, which will pick up a certain amount of chunks (i.e., `PROCESSING_CHUNKS_LIMIT`, 2 by default), process them and store them into `minio:helical/training_data/cell_type_classification/processed_data`. The idea of having a `PROCESSING_CHUNKS_LIMIT` variable is to allow for [distributed computing](#ray-example), i.e., each DAG instance (i.e., container) run picks up a certain number of chunks, and processes them. This allows you to later setup up a pipeline that deploys multiple containers per DAG run.
 Note that each chunk is compressed after the data is processed to reduce local/cloud storage overhead.
 
 ```bash
@@ -494,3 +494,84 @@ FileNotFoundError: [Errno 2] No such file or directory: '/home/pedroq/.cache/hel
 - [Setting up docker.sock for Airflow DockerOperators](https://github.com/benjcabalona1029/DockerOperator-Airflow-Container/blob/master/docker-compose.yaml)
 - [Airflow config](https://airflow.apache.org/docs/apache-airflow/stable/configurations-ref.html#config-metrics)
 - [Airflow metrics](https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/metrics.html)
+
+
+### ray-example
+
+This section includes some legacy information that I didn't include in the final codebase so I'll store it here for posterity.
+
+I've tried deploying Ray with Terraform with `kuberay.tf` and `helical_pdqueiros/config/raycluster.yaml`. To deploy Ray with terraform run this:
+```bash
+terraform apply -target=helm_release.kuberay_operator
+```
+
+I managed to connect to the Ray cluster from a local execution but got stuck pushing the necessary image to the Docker Desktop Kubernetes registry. I'm not sure why, but the pod cannot pull the image from the Docker Desktop registry. The `helical-pdqueiros-ray-cpu` image is also quite large so I can't load it multiple times (for testing) into ECR without blowing up my monthly quota.
+On the other hand, I've managed to do so with minikube by building the image into Minikube's internal docker registry by running:
+```bash
+eval $(minikube -p minikube docker-env)
+docker compose -f docker-compose-build.yaml build helical-pdqueiros-ray-cpu
+# Check that the images are available with:
+minikube image ls
+```
+
+However, GPU access through Minikube was not easy to setup, so for now I've decided to stick with Docker Desktop as it seems to work best out-of-the-box and covers the task description.
+
+If you want to try Ray locally, this is the code I've used:
+
+```python
+import ray
+RAY_ENDPOINT = os.getenv('RAY_ENDPOINT', 'ray://localhost:10001')
+@ray.remote
+def ray_process_data(file_name: str):
+    # all non-pickable objects are created here, and so we should avoid having very small chunks, otherwise we get more overhead
+    local_file_path = os.path.join(LOCAL_CHUNKED_DATA_PATH, file_name)
+    output_path = os.path.join(LOCAL_PROCESSED_DATA_PATH, f'{Path(file_name).stem}.dataset')
+    logger.debug(f'Processing data in {local_file_path}')
+    s3_client = ClientS3()
+    data_processor = CellTypeAnnotationDataProcessor()
+    try:
+        data_document = DataDocument(file_path=local_file_path)
+        output_path = data_processor.process_data(data_document=data_document, output_path=output_path)
+        compressed_output_path = ProcessData.compress_file(file_path=output_path)
+        return compressed_output_path
+    except Exception as e:
+        s3_file_path = os.path.join(CHUNKED_DATA_PATH, file_name)
+        s3_error_file_path = os.path.join(CHUNKED_DATA_ERROR_PATH, file_name)
+        logger.error(f'Failed to process {local_file_path}, moving from {s3_file_path} to {s3_error_file_path} skipping due to {e}')
+        s3_client.move_file(current_path=s3_file_path, new_path=s3_error_file_path)
+        s3_client.unlock_file(locked_s3_path=s3_error_file_path)
+    os.remove(local_file_path)
+
+    def process_data_with_ray(self) -> list[str]:
+        ray.init(RAY_ENDPOINT,
+                     runtime_env={
+                        "py_executable": "/app/.venv/bin/python",
+                        "env_vars": {
+                            "PATH": "/app/.venv/bin:$PATH",
+                            "PYTHONPATH": "/app/src:$PYTHONPATH",
+                        },
+                    },
+                )
+        res = []
+        to_process = []
+        for file_name in os.listdir(LOCAL_CHUNKED_DATA_PATH):
+            to_process.append(ray_process_data.remote(file_name=file_name))
+        res = ray.get(to_process)
+        os.remove(local_file_path)
+        return res
+
+    def process_data(self, distributed: bool=False) -> list[str]:
+        if distributed:
+            logger.debug('Processsing data with Ray')
+            return self.process_data_with_ray()
+        else:
+            logger.debug('Processsing data iteratively')
+            return self.process_data_with_base_python()
+```
+
+You have to also tunnel into the head service so that the ray endpoint (localhost:10001) becomes available:
+```bash
+
+kubectl port-forward service/helical-raycluster-head-svc -n helical-pdqueiros 8265:8265 10001:10001
+```
+

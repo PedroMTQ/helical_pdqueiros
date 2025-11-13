@@ -164,9 +164,53 @@ Assuming everything was deployed correctly, you should now have access to all th
 
 When you access the [Minio](http://localhost:9001) dashboard, you should see 2 buckets: `helical` and `mlflow`; the `helical` bucket is where you will load your test data, which I've included in `tests/test_data.h5ad`.
 
-In [Airflow](http://localhost:8080/) you will see these DAGs:
+
+Now, go to [Airflow](http://localhost:8080/) and you should see no DAGs due to :
+
+```bash
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/sdk/definitions/variable.py", line 53, in get
+    return _get_variable(key, deserialize_json=deserialize_json)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/sdk/execution_time/context.py", line 265, in _get_variable
+    raise AirflowRuntimeError(
+airflow.sdk.exceptions.AirflowRuntimeError: VARIABLE_NOT_FOUND: {'message': 'Variable MINIO_CONNECTION not found'}
+```
+
+![airflow-dags-error](./images/airflow-dags-error.png)
+
+
+
+**This is expected since we didn't yet create the necessary connection in Airflow.**
+
+So go to the Airflow UI, and create the connection with these details:
+
+- in the `Connection ID` field add `minio_connection` (that's what we defined in the `.env` but you could change it)
+- Connection type: `Amazon Web Services`
+- AWS Access Key ID: `BEDa33cuSs9aahxEWzG` (also defined in the `.env`)
+- AWS Secret Access Key: `zsKNU39z7TlmyqiqwdxL6ZtCk9TpvsH3AMJX9qDl` (also defined in the .`env`)
+- In the Extra Fields JSON add this:
+```json
+{
+    "endpoint_url": "http://storage-minio:9000"
+}
+```
+![minio-connection](./images/minio-connection.png)
+
+Save the connection.
+
+Now, while I've used load_dotenv to load our environmental variables (by mounting the `.env` file), in a production environment you are better off defining variables through the UI and then using `from airflow.sdk import Variable`. You can see the `MINIO_CONNECTION` example in the code and in the image below:
+
+So go to the Airflow UI again and create this Variable:
+- Key: `MINIO_CONNECTION`
+- Value: `minio_connection` (this is the connection ID of the connection you created above)
+
+![minio-connection-variable](./images/minio-connection-variable.png)
+
+Save the variable and wait 10-30 seconds. Once Airflow refreshes the DAGs, you should be able to see the workflow DAGs:
 
 ![airflow-dags](./images/airflow-dags.png)
+
 
 
 If you open [Grafana](http://localhost:3000/login) you will have multiple dashboards, `Helical dashboard` among them, which is where you can track system resources and Airflow runs.
@@ -187,8 +231,8 @@ As per Helical-AI's example [notebook](https://github.com/helicalAI/helical/blob
 I've designed this pipeline in 4 major steps:
 
 1. User or an automated process uploads training data to a staging area (for example to an S3 bucket).
-2. When new data arrives, a Dag is triggered (as a POC I didn't include a schedule interval) which [splits](#data-splitting) the raw data into chunks.
-3. These [chunks are processed](#data-processing) across multiple containers (if you set it up in that manner using K8s or Ray).
+2. When new data arrives, a Dag is triggered which [splits](#data-splitting) the raw data into chunks.
+3. These [chunks are processed](#data-processing) across multiple containers.
 4. A model is [fine-tuned](#model-fine-tuning) and the respective experiment is logged into Mlflow. Note that this last step should be triggered manually or with a large enough schedule interval as model training is quite expensive and something you want to monitor.
 
 **Note that files are locked in Minio (suffix `.lock` is added) in order to avoid processing the same data data twice**
@@ -403,12 +447,6 @@ As you can see above, there's 3 DAGs, the first 2 (`cell_type_classification.spl
 
 ### **Note that you need to create a connection to MinIO through the Airflow UI**
 
-![minio-connection](./images/minio-connection.png)
-
-Additionally, while I've used load_dotenv to load our environmental variables (by mounting the `.env` file), in a production environment you are better off defining variables through the UI and then using `from airflow.sdk import Variable`. You can see the `MINIO_CONNECTION` example in the code and in the image below:
-
-![minio-connection-variable](./images/minio-connection-variable.png)
-s
 
 As you can see from the code and image below, these 2 DAGs are being trigger every minute by this sensor, which checks MinIO for regex patterns I've defined in the `.env` file:
 ```bash
@@ -418,6 +456,7 @@ SENSOR__CHUNKED_DATA_PATTERN="training_data/cell_type_classification/chunked_dat
 If the sensor finds these patterns in MinIO, then the next task of the DAG is triggered.
 The important detail here being that `cell_type_classification.process_data` can be triggered multiple times, since each internal task (`process_data_task`) only takes a certain amount of `PROCESSING_CHUNKS_LIMIT` chunks per run. So, imagine that you have a very large dataset that is split in `cell_type_classification.split_data` into very large chunks that hours to process; by triggering the `cell_type_classification.process_data` DAG multiple times, you are able to parallelize the data processing.
 
+*Note that you will see a lot of failed DAG runs, this is not really a failure but *
 
 ![dags-parallel](./images/dags-parallel.png)
 
@@ -497,8 +536,9 @@ APIError: 409 Client Error for http://airflow-docker-socket:2375/v1.51/container
 ## Helical TODO
 
 - fix logging (it's consuming too much and leading to weird behaviour)
-- clean up code in models
+- clean up/improve readability of code in models
 - add accelerator to some of the models
+- Use ruff instead of black
 - migrate to hugging face trainer; not sure how feasible it is since some models have some specific internal behaviour
 - Add UV installation and dependencies grouping (both very easy wins). The base pyproject is way too large, e.g.:
     - dependency group for data processing
@@ -532,6 +572,15 @@ FileNotFoundError: [Errno 2] No such file or directory: '/home/pedroq/.cache/hel
 - [Airflow config](https://airflow.apache.org/docs/apache-airflow/stable/configurations-ref.html#config-metrics)
 - [Airflow metrics](https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/metrics.html)
 
+## Challenges
+
+- Airflow is a bit unstable, e.g., UI inaccessible, S3Sensors not recognizing service name (even though they are in the same network), status unhealthy -> fixed by resetting DBs and containers multiple times, but no explicit reasons for instability
+- GPU availability in WSL
+- Airflow documentation is a bit convoluted
+- Airflow metrics partially exposed, even though OTEL is setup
+- Unstable AWS file downloads, both in containers and locally
+- Some of the code in Helica-AI codebase is a bit hard to read (especially `train` functions), with duplicated code, very long functions 
+- Infrastructure setup with Docker was quite straightforward but with Terraform it was a bit more challenging - likely due to lack of experience with Terraform and Helm
 
 ### ray-example
 

@@ -24,7 +24,6 @@ ENV_CONFIG = dotenv_values(ENV_FILE)
 BUCKET_NAME = ENV_CONFIG['HELICAL_S3_BUCKET']
 SENSOR_TIMEOUT = int(ENV_CONFIG.get('SENSOR_TIMEOUT', '10'))
 
-MINIO_CONNECTION = Variable.get('MINIO_CONNECTION')
 
 
 def get_task(execution_type: Literal['split_data', 'process_data', 'fine_tune'], image_name: str, device_requests: list=None):
@@ -61,10 +60,11 @@ with DAG(
     ) as dag:
         sensor_key_with_regex = S3KeySensor(task_id="sensor_key_with_regex.split_data",
                                             # this is the connection ID we setup in the UI
-                                            aws_conn_id=MINIO_CONNECTION,
+                                            aws_conn_id=Variable.get('MINIO_CONNECTION', default='minio_connection'),
                                             bucket_name=BUCKET_NAME,
                                             bucket_key=ENV_CONFIG['SENSOR__RAW_DATA_PATTERN'],
                                             timeout=SENSOR_TIMEOUT,
+                                            soft_fail=True,
                                             use_regex=True)
         split_data_task = get_task(execution_type='split_data', image_name=IMAGE_NAME)
         sensor_key_with_regex >> split_data_task
@@ -82,10 +82,11 @@ with DAG(
     tags=["helical-pdqueiros", 'process_data'],
     ) as dag:
         sensor_key_with_regex = S3KeySensor(task_id="sensor_key_with_regex.process_data",
-                                            aws_conn_id=MINIO_CONNECTION,
+                                            aws_conn_id=Variable.get('MINIO_CONNECTION', default='minio_connection'),
                                             bucket_name=BUCKET_NAME,
                                             bucket_key=ENV_CONFIG['SENSOR__CHUNKED_DATA_PATTERN'],
                                             timeout=SENSOR_TIMEOUT,
+                                            soft_fail=True,
                                             use_regex=True)
         process_data_task = get_task(execution_type='process_data', image_name=IMAGE_NAME)
         sensor_key_with_regex >> process_data_task

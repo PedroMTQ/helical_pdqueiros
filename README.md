@@ -231,9 +231,21 @@ As per Helical-AI's example [notebook](https://github.com/helicalAI/helical/blob
 I've designed this pipeline in 4 major steps:
 
 1. User or an automated process uploads training data to a staging area (for example to an S3 bucket).
+
+![workflow-1](./images/workflow-1.png)
+
 2. When new data arrives, a Dag is triggered which [splits](#data-splitting) the raw data into chunks.
+
+![workflow-2](./images/workflow-2.png)
+
 3. These [chunks are processed](#data-processing) across multiple containers.
+
+![workflow-3](./images/workflow-3.png)
+
 4. A model is [fine-tuned](#model-fine-tuning) and the respective experiment is logged into Mlflow. Note that this last step should be triggered manually or with a large enough schedule interval as model training is quite expensive and something you want to monitor.
+
+![workflow-4](./images/workflow-4.png)
+
 
 **Note that files are locked in Minio (suffix `.lock` is added) in order to avoid processing the same data data twice**
 Below you can find the underlying logic for each step (3-5). These were first created as Jobs for development and then deployed as Airflow Docker operators.

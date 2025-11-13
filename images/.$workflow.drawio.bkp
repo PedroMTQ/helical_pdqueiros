@@ -1,0 +1,220 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.2.8 Chrome/140.0.7339.240 Electron/38.4.0 Safari/537.36" version="28.2.8">
+  <diagram name="Page-1" id="b0AfZciCBegxthSOO2ho">
+    <mxGraphModel dx="1722" dy="1001" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-33" value="" style="group" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="310" y="580" width="1488.94" height="225" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-90" value="" style="group" vertex="1" connectable="0" parent="6OiBNNsxrOtiNxcxVLrv-33">
+          <mxGeometry x="-21.06" y="-25" width="1291.06" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-89" value="" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-90">
+          <mxGeometry width="1291.06" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-9" value="" style="group" vertex="1" connectable="0" parent="6OiBNNsxrOtiNxcxVLrv-90">
+          <mxGeometry x="21.06" y="55" width="58.94" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-7" value="" style="sketch=0;html=1;aspect=fixed;shadow=0;verticalAlign=top;labelPosition=center;verticalLabelPosition=bottom;shape=mxgraph.gcp2.arrow_cycle" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-9">
+          <mxGeometry x="8.939999999999998" width="42.11" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-8" value="S3sensor&lt;div&gt;checks for raw_data&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-9">
+          <mxGeometry y="50" width="58.94" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-24" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-90" source="6OiBNNsxrOtiNxcxVLrv-13" target="6OiBNNsxrOtiNxcxVLrv-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-13" value="DockerOperator trigger split_data" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-90">
+          <mxGeometry x="390" y="50" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-15" value="STOP" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-90">
+          <mxGeometry x="200" y="175" width="80" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-20" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-90" source="6OiBNNsxrOtiNxcxVLrv-18" target="6OiBNNsxrOtiNxcxVLrv-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-21" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-90" source="6OiBNNsxrOtiNxcxVLrv-18" target="6OiBNNsxrOtiNxcxVLrv-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-18" value="is there new data?" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.decision;whiteSpace=wrap;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-90">
+          <mxGeometry x="190" y="25" width="100" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-90" source="6OiBNNsxrOtiNxcxVLrv-7" target="6OiBNNsxrOtiNxcxVLrv-18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-32" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-90" source="6OiBNNsxrOtiNxcxVLrv-23" target="6OiBNNsxrOtiNxcxVLrv-26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-23" value="Container downloads data" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-90">
+          <mxGeometry x="570" y="50" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-30" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-90" source="6OiBNNsxrOtiNxcxVLrv-26" target="6OiBNNsxrOtiNxcxVLrv-28">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-26" value="Data is downloaded and locked in S3" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-90">
+          <mxGeometry x="760" y="50" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-31" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-90" source="6OiBNNsxrOtiNxcxVLrv-28" target="6OiBNNsxrOtiNxcxVLrv-29">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-28" value="Data is split" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-90">
+          <mxGeometry x="950" y="50" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-29" value="Data is uploaded to S3:chunked_data" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-90">
+          <mxGeometry x="1140" y="50" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-91" value="DAG split_data" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=19;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-90">
+          <mxGeometry x="1110" y="215" width="181.06" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-34" value="" style="group" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="320" y="850" width="1435" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-97" value="" style="group" vertex="1" connectable="0" parent="6OiBNNsxrOtiNxcxVLrv-34">
+          <mxGeometry x="-26.590000000000003" y="-20" width="1291.06" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-92" value="" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-97">
+          <mxGeometry width="1291.06" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-35" value="" style="group" vertex="1" connectable="0" parent="6OiBNNsxrOtiNxcxVLrv-97">
+          <mxGeometry x="26.590000000000003" y="50" width="58.94" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-36" value="" style="sketch=0;html=1;aspect=fixed;shadow=0;verticalAlign=top;labelPosition=center;verticalLabelPosition=bottom;shape=mxgraph.gcp2.arrow_cycle" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-35">
+          <mxGeometry x="8.939999999999998" width="42.11" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-37" value="S3sensor&lt;div&gt;checks for chunked_data&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-35">
+          <mxGeometry y="50" width="58.94" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-63" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-97" source="6OiBNNsxrOtiNxcxVLrv-39" target="6OiBNNsxrOtiNxcxVLrv-59">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-39" value="DockerOperator trigger process_data" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-97">
+          <mxGeometry x="395.53" y="45" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-40" value="STOP" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-97">
+          <mxGeometry x="205.53" y="170" width="80" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-41" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-97" source="6OiBNNsxrOtiNxcxVLrv-43" target="6OiBNNsxrOtiNxcxVLrv-40">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-42" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-97" source="6OiBNNsxrOtiNxcxVLrv-43" target="6OiBNNsxrOtiNxcxVLrv-39">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-43" value="is there new data?" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.decision;whiteSpace=wrap;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-97">
+          <mxGeometry x="195.53" y="20" width="100" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-44" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-97" source="6OiBNNsxrOtiNxcxVLrv-36" target="6OiBNNsxrOtiNxcxVLrv-43">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-47" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-97" source="6OiBNNsxrOtiNxcxVLrv-48" target="6OiBNNsxrOtiNxcxVLrv-50">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-48" value="Data is downloaded and locked in S3" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-97">
+          <mxGeometry x="765.5300000000001" y="45" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-49" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-97" source="6OiBNNsxrOtiNxcxVLrv-50" target="6OiBNNsxrOtiNxcxVLrv-51">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-50" value="Data is processed and compressed" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-97">
+          <mxGeometry x="955.5300000000001" y="45" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-51" value="Data is uploaded to S3:processed_data" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-97">
+          <mxGeometry x="1145.53" y="45" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-62" value="" style="group" vertex="1" connectable="0" parent="6OiBNNsxrOtiNxcxVLrv-97">
+          <mxGeometry x="585.5300000000001" y="15" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-56" value="Container downloads data" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;container=0;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-62">
+          <mxGeometry x="10" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-58" value="Container downloads data" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;container=0;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-62">
+          <mxGeometry y="10" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-57" value="Container downloads data" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;container=0;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-97">
+          <mxGeometry x="575.5300000000001" y="35" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-64" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-97" source="6OiBNNsxrOtiNxcxVLrv-59" target="6OiBNNsxrOtiNxcxVLrv-48">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-59" value="Container downloads X chunks" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;container=0;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-97">
+          <mxGeometry x="565.5300000000001" y="45" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-93" value="DAG process_data" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=19;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-97">
+          <mxGeometry x="1110" y="215" width="181.06" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-5" value="" style="group" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="295" y="420" width="260" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-1" value="S3" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.database;whiteSpace=wrap;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-5">
+          <mxGeometry x="200" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-4" value="user uploads data to&amp;nbsp;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-5" source="6OiBNNsxrOtiNxcxVLrv-2" target="6OiBNNsxrOtiNxcxVLrv-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-2" value="" style="shape=actor;whiteSpace=wrap;html=1;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-5">
+          <mxGeometry width="40" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-3" value="raw_data" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-5">
+          <mxGeometry x="200" y="70" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-96" value="" style="group" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="290" y="1120" width="1291.06" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-94" value="" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-96">
+          <mxGeometry width="1291.06" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-87" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-96" source="6OiBNNsxrOtiNxcxVLrv-52" target="6OiBNNsxrOtiNxcxVLrv-74">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-52" value="" style="shape=actor;whiteSpace=wrap;html=1;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-96">
+          <mxGeometry x="40" y="40" width="40" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-69" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-96" source="6OiBNNsxrOtiNxcxVLrv-70" target="6OiBNNsxrOtiNxcxVLrv-86">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-70" value="DockerOperator trigger fine_tune with GPU access" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-96">
+          <mxGeometry x="398.94000000000005" y="45" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-71" value="STOP" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-96">
+          <mxGeometry x="185.52999999999997" y="190" width="80" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-72" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-96" source="6OiBNNsxrOtiNxcxVLrv-74" target="6OiBNNsxrOtiNxcxVLrv-71">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-73" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-96" source="6OiBNNsxrOtiNxcxVLrv-74" target="6OiBNNsxrOtiNxcxVLrv-70">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-74" value="is there new or archived processed_data?" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.decision;whiteSpace=wrap;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-96">
+          <mxGeometry x="150" y="5" width="151.06" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-76" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-96" source="6OiBNNsxrOtiNxcxVLrv-77" target="6OiBNNsxrOtiNxcxVLrv-79">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-77" value="Data is downloaded fromS3" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-96">
+          <mxGeometry x="760" y="45" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-78" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-96" source="6OiBNNsxrOtiNxcxVLrv-79" target="6OiBNNsxrOtiNxcxVLrv-80">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-79" value="Model is fine-tuned" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-96">
+          <mxGeometry x="950" y="45" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-80" value="Experiment is logged into Mlflow" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-96">
+          <mxGeometry x="1148.94" y="45" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-85" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="6OiBNNsxrOtiNxcxVLrv-96" source="6OiBNNsxrOtiNxcxVLrv-86" target="6OiBNNsxrOtiNxcxVLrv-77">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-86" value="Container downloads new and archived processed data" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=14;strokeWidth=2;container=0;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-96">
+          <mxGeometry x="568.94" y="37.5" width="110" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-88" value="User trigger fine-tuning DAG" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-96">
+          <mxGeometry x="20.269999999999982" y="110" width="79.47" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="6OiBNNsxrOtiNxcxVLrv-95" value="DAG fine_tune" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=19;" vertex="1" parent="6OiBNNsxrOtiNxcxVLrv-96">
+          <mxGeometry x="1100" y="210" width="181.06" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
